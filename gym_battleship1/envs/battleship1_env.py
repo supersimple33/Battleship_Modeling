@@ -106,13 +106,6 @@ class Battleship1(gym.Env):
 			return 1
 		return 0
 
-	# searchs if a specific space enum exists on the board
-	def checkForSpace(self, sp):
-		for row in self.state:
-			if sp in row:
-				return True
-		return False
-
 	def step(self, target):
 		x = target % 10
 		y = int(target / 10)
@@ -130,7 +123,8 @@ class Battleship1(gym.Env):
 				hit = True
 				self.state[y][x] = Space.HitPTwo
 				self.hidState[y][x] = Space.HitPTwo
-				if not self.checkForSpace(Space.HiddenTwo):
+				self.hitsOnShips[4] = self.hitsOnShips[4] + 1
+				if self.hitsOnShips[4] == 2:
 					for row in range(10):
 						for col in range(10):
 							if self.state[row][col] == Space.HitPTwo:
@@ -140,7 +134,8 @@ class Battleship1(gym.Env):
 				hit = True
 				self.state[y][x] = Space.HitPSub
 				self.hidState[y][x] = Space.HitPSub
-				if not self.checkForSpace(Space.HiddenSub):
+				self.hitsOnShips[3] = self.hitsOnShips[3] + 1
+				if self.hitsOnShips[3] == 3:
 					for row in range(10):
 						for col in range(10):
 							if self.state[row][col] == Space.HitPSub:
@@ -150,7 +145,8 @@ class Battleship1(gym.Env):
 				hit = True
 				self.state[y][x] = Space.HitPCruiser
 				self.hidState[y][x] = Space.HitPCruiser
-				if not self.checkForSpace(Space.HiddenCruiser):
+				self.hitsOnShips[2] = self.hitsOnShips[2] + 1
+				if self.hitsOnShips[2] == 3:
 					for row in range(10):
 						for col in range(10):
 							if self.state[row][col] == Space.HitPCruiser:
@@ -159,8 +155,8 @@ class Battleship1(gym.Env):
 			elif targetSpace == Space.HiddenFour:
 				hit = True
 				self.state[y][x] = Space.HitPFour
-				self.hidState[y][x] = Space.HitPFour
-				if not self.checkForSpace(Space.HiddenFour):
+				self.hitsOnShips[1] = self.hitsOnShips[1] + 1
+				if self.hitsOnShips[1] == 4:
 					for row in range(10):
 						for col in range(10):
 							if self.state[row][col] == Space.HitPFour:
@@ -169,8 +165,8 @@ class Battleship1(gym.Env):
 			elif targetSpace == Space.HiddenFive:
 				hit = True
 				self.state[y][x] = Space.HitPFive
-				self.hidState[y][x] = Space.HitPFive
-				if not self.checkForSpace(Space.HiddenFive):
+				self.hitsOnShips[0] = self.hitsOnShips[0] + 1
+				if self.hitsOnShips[0] == 5:
 					for row in range(10):
 						for col in range(10):
 							if self.state[row][col] == Space.HitPFive:
@@ -191,6 +187,8 @@ class Battleship1(gym.Env):
 		self.state = setupShips(self.np_random)
 		self.hidState = [[Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10]
 		
+		self.hitsOnShips = [0, 0, 0, 0, 0]
+
 		self.counter = 0
 		self.done = 0
 		# self.add = [0, 0]
