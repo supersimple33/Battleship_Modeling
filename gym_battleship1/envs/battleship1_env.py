@@ -97,14 +97,6 @@ class Battleship1(gym.Env):
 		self.reset()
 
 		# Action and observations spaces
-	
-	# checks for game over
-	def check(self):
-		if self.counter < 16:
-			return 0
-		elif not (self.checkForSpace(Space.HiddenTwo) or self.checkForSpace(Space.HiddenSub) or self.checkForSpace(Space.HiddenCruiser) or self.checkForSpace(Space.HiddenFour) or self.checkForSpace(Space.HiddenFive)):
-			return 1
-		return 0
 
 	def step(self, target):
 		x = target % 10
@@ -176,7 +168,7 @@ class Battleship1(gym.Env):
 				# print("Misfire")
 				return [self.hidState, self.reward, self.done, False, hit]
 			self.counter += 1
-		win = self.check()
+		win = self.hitsOnShips == [5,4,3,3,2]
 		if win:
 			self.done = 1
 			print("Game over: ", self.counter, " moves.", sep = "", end = "\n")
