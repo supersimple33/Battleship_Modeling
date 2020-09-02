@@ -27,26 +27,68 @@ class Space(enum.Enum):
 	HiddenFour = "|4|"
 	HiddenFive = "|5|"
 
+def addShip(state, ship, len_, x, y, d):
+		r = range(0, len_)
+		# print(self.boardRep())
+		if d == 0:
+			for j in r:
+				if state[y + j][x] != Space.Empty: # loop run twice in order to make sure all spaces are clear before making modifications
+					return False
+			for j in r:
+				state[y + j][x] = ship
+		elif d == 1:
+			for j in r:
+				if state[y][x + j] != Space.Empty:
+					return False
+			for j in r:
+				state[y][x + j] = ship
+		elif d == 2:
+			for j in r:
+				if state[y - j][x] != Space.Empty:
+					return False
+			for j in r:
+				state[y - j][x] = ship
+		elif d == 3:
+			for j in r:
+				if state[y][x - j] != Space.Empty:
+					return False
+			for j in r:
+				state[y][x - j] = ship
+		return True
+
+def setupShips(np_random):
+		i = 0
+		state = [[Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10]
+		# shipIds = [0,1,2,3,4]
+		while (i < 5): #refactor outf
+			# s = np_random.choice(shipIds)
+			len_ = [5, 4, 3, 3, 2][i]#s
+			ship = [Space.HiddenFive, Space.HiddenFour, Space.HiddenCruiser, Space.HiddenSub, Space.HiddenTwo][i]#s
+			x = np_random.randint(0,9)
+			y = np_random.randint(0,9)
+			d = np_random.randint(0,3)
+			
+			if ((d % 2 == 1) and ((x - len_ < -1) or (x + len_) > 10)) or ((d % 2 == 0) and ((y - len_ < -1) or (y + len_) > 10)):
+				continue
+			elif (not addShip(state, ship, len_, x, y, d)): # could we add the ship, if not try again with new random coordinate
+				continue
+			# shipIds.remove(len_)
+			i += 1
+		return state
+
 #game code
 class Battleship1(gym.Env):
 	metadata = {'render.modes': ['human']}
 
 	def __init__(self):
-		self.state = [[Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10]
+		self.action_space = spaces.Discrete(100)
+		self.observation_space = spaces.Tuple([
+    		spaces.MultiDiscrete([12, 12, 12, 12, 12, 12, 12, 12, 12, 12]) for _ in range(10)
+		])
+		self.seed()
+
+		self.state = setupShips(self.np_random)
 		self.hidState = [[Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10]
-		i = 0
-		while (i < 5): #refactor out
-			len = [5, 4, 3, 3, 2][i]
-			ship = [Space.HiddenFive, Space.HiddenFour, Space.HiddenCruiser, Space.HiddenSub, Space.HiddenTwo][i]
-			x = randint(0,9)
-			y = randint(0,9)
-			#d = randint(0,3)
-			d = 0
-			if ((d % 2 == 1) and ((x - len < -1) or (x + len) > 10)) or ((d % 2 == 0) and ((y - len < -1) or (y + len) > 10)):
-				continue
-			elif (not self.addShip(ship, len, x, y, d)):
-				continue
-			i += 1
 
 		self.counter = 0
 		self.done = 0
@@ -54,11 +96,8 @@ class Battleship1(gym.Env):
 		self.reward = 0
 
 		# Action and observations spaces
-		self.action_space = spaces.Discrete(100)
-		self.observation_space = spaces.Tuple([
-    		spaces.MultiDiscrete([12, 12, 12, 12, 12, 12, 12, 12, 12, 12]) for _ in range(10)
-		])
 	
+	# checks for game over
 	def check(self):
 		if self.counter < 16:
 			return 0
@@ -66,6 +105,7 @@ class Battleship1(gym.Env):
 			return 1
 		return 0
 
+	# searchs if a specific space enum exists on the board
 	def checkForSpace(self, sp):
 		for row in self.state:
 			if sp in row:
@@ -176,35 +216,6 @@ class Battleship1(gym.Env):
 			print(ret)
 			ret = ""
 		print()
-
-	def _addShip(self, ship, len, x, y, d):
-		r = range(0, len)
-		# print(self.boardRep())
-		if d == 0:
-			for j in r:
-				if self.state[y + j][x] != Space.Empty: # loop run twice in order to make sure all spaces are clear before making modifications
-					return False
-			for j in r:
-				self.state[y + j][x] = ship
-		elif d == 1:
-			for j in r:
-				if self.state[y][x + j] != Space.Empty:
-					return False
-			for j in r:
-				self.state[y][x + j] = ship
-		elif d == 2:
-			for j in r:
-				if self.state[y - j][x] != Space.Empty:
-					return False
-			for j in r:
-				self.state[y - j][x] = ship
-		elif d == 3:
-			for j in r:
-				if self.state[y][x - j] != Space.Empty:
-					return False
-			for j in r:
-				self.state[y][x - j] = ship
-		return True
 
 	def seed(self, seed=None):
 		self.np_random, seed = utils.seeding.np_random()
