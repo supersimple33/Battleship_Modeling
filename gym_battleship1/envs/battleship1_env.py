@@ -87,13 +87,14 @@ class Battleship1(gym.Env):
 		])
 		self.seed()
 
-		self.state = setupShips(self.np_random)
-		self.hidState = [[Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10]
+		# self.state = setupShips(self.np_random)
+		# self.hidState = [[Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10]
 
-		self.counter = 0
-		self.done = 0
-		# self.add = [0, 0]
-		self.reward = 0
+		# self.counter = 0
+		# self.done = 0
+		# # self.add = [0, 0]
+		# self.reward = 0
+		self.reset()
 
 		# Action and observations spaces
 	
@@ -187,26 +188,14 @@ class Battleship1(gym.Env):
 		return [self.hidState, self.reward, self.done, True, hit]
 
 	def reset(self):
-		self.state = [[Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10]
-		i = 0
-		while (i < 5):
-			len = [5, 4, 3, 3, 2][i]
-			ship = [Space.HiddenFive, Space.HiddenFour, Space.HiddenCruiser, Space.HiddenSub, Space.HiddenTwo][i]
-			x = randint(0,9)
-			y = randint(0,9)
-			#d = randint(0,3)
-			d = 0
-			if ((d % 2 == 1) and ((x - len < -1) or (x + len) > 10)) or ((d % 2 == 0) and ((y - len < -1) or (y + len) > 10)):
-				continue
-			elif (not self.addShip(ship, len, x, y, d)):
-				continue
-			i += 1
+		self.state = setupShips(self.np_random)
+		self.hidState = [[Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10]
 		
 		self.counter = 0
 		self.done = 0
 		# self.add = [0, 0]
 		self.reward = 0
-		return self.hidState()
+		return self.hidState
 	
 	def render(self, mode='human', close=False):
 		ret = ""
