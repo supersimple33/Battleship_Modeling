@@ -98,15 +98,47 @@ class Battleship1(gym.Env):
 
 		# Action and observations spaces
 
+	def searchAndReplace(self, x, y, len_, search, replace):
+		self.state[y][x] = replace
+		direc = (-1,1)
+		for d in direc:
+			if len_ == 0:
+				continue
+			if self.state[y + d][x] == search:
+				self.state[y + d][x] = replace
+				self.hidState[y + d][x] = replace
+				len_ -= 1
+				for e in range(1,len_):
+					if self.state[y + (d*e)][x] == search:
+						self.state[y + (d*e)][x] = replace
+						self.hidState[y + (d*e)][x] = replace
+						len_ -= 1
+					else:
+						break
+		for d in direc:
+			if len_ == 0:
+				continue
+			if self.state[y][x + d] == search:
+				self.state[y][x + d] = replace
+				self.hidState[y][x + d] = replace
+				len_ -= 1
+				for e in range(1,len_):
+					if self.state[y][x + (d*e)] == search:
+						self.state[y][x + (d*e)] = replace
+						self.hidState[y][x + (d*e)] = replace
+						len_ -= 1
+					else:
+						break
+
 	def step(self, target):
 		x = target % 10
-		y = int(target / 10)
+		y = target // 10
 		targetSpace = self.state[y][x]
 		hit = False
 
 		if self.done == 1:
 			print("Game Over")
-			return [self.hidState, self.reward, self.done, True, hit] #check return
+			return [self.hidState, self.reward, self.done, (True, hit)] #check return
 		else:
 			if targetSpace == Space.Empty:
 				self.state[y][x] = Space.Miss
@@ -117,63 +149,45 @@ class Battleship1(gym.Env):
 				self.hidState[y][x] = Space.HitPTwo
 				self.hitsOnShips[4] = self.hitsOnShips[4] + 1
 				if self.hitsOnShips[4] == 2:
-					for row in range(10):
-						for col in range(10):
-							if self.state[row][col] == Space.HitPTwo:
-								self.state[row][col] = Space.SunkTwo
-								self.hidState[row][col] = Space.SunkTwo
+					self.searchAndReplace(x, y, self.hitsOnShips[4], Space.HitPTwo, Space.SunkTwo)
 			elif targetSpace == Space.HiddenSub:
 				hit = True
 				self.state[y][x] = Space.HitPSub
 				self.hidState[y][x] = Space.HitPSub
 				self.hitsOnShips[3] = self.hitsOnShips[3] + 1
 				if self.hitsOnShips[3] == 3:
-					for row in range(10):
-						for col in range(10):
-							if self.state[row][col] == Space.HitPSub:
-								self.state[row][col] = Space.SunkSub
-								self.hidState[row][col] = Space.SunkSub
+					self.searchAndReplace(x, y, self.hitsOnShips[3], Space.HitPSub, Space.SunkSub)
 			elif targetSpace == Space.HiddenCruiser:
 				hit = True
 				self.state[y][x] = Space.HitPCruiser
 				self.hidState[y][x] = Space.HitPCruiser
 				self.hitsOnShips[2] = self.hitsOnShips[2] + 1
 				if self.hitsOnShips[2] == 3:
-					for row in range(10):
-						for col in range(10):
-							if self.state[row][col] == Space.HitPCruiser:
-								self.state[row][col] = Space.SunkCruiser
-								self.hidState[row][col] = Space.SunkCruiser
+					self.searchAndReplace(x, y, self.hitsOnShips[2], Space.HitPCruiser, Space.SunkCruiser)
 			elif targetSpace == Space.HiddenFour:
 				hit = True
 				self.state[y][x] = Space.HitPFour
 				self.hitsOnShips[1] = self.hitsOnShips[1] + 1
 				if self.hitsOnShips[1] == 4:
-					for row in range(10):
-						for col in range(10):
-							if self.state[row][col] == Space.HitPFour:
-								self.state[row][col] = Space.SunkFour
-								self.hidState[row][col] = Space.SunkFour
+					self.searchAndReplace(x, y, self.hitsOnShips[1], Space.HitPFour, Space.SunkFour)
 			elif targetSpace == Space.HiddenFive:
 				hit = True
 				self.state[y][x] = Space.HitPFive
 				self.hitsOnShips[0] = self.hitsOnShips[0] + 1
 				if self.hitsOnShips[0] == 5:
-					for row in range(10):
-						for col in range(10):
-							if self.state[row][col] == Space.HitPFive:
-								self.state[row][col] = Space.SunkFive
-								self.hidState[row][col] = Space.SunkFive
+					self.searchAndReplace(x, y, self.hitsOnShips[0], Space.HitPFive, Space.SunkFive)
 			else:
 				# print("Misfire")
-				return [self.hidState, self.reward, self.done, False, hit]
+				self.done = 1
+				self.reward = 0
+				return [self.hidState, self.reward, self.done, (False, hit)]
 			self.counter += 1
 		win = self.hitsOnShips == [5,4,3,3,2]
 		if win:
 			self.done = 1
 			print("Game over: ", self.counter, " moves.", sep = "", end = "\n")
 			self.reward = 100 - self.counter
-		return [self.hidState, self.reward, self.done, True, hit]
+		return [self.hidState, self.reward, self.done, (True, hit)]
 
 	def reset(self):
 		self.state = setupShips(self.np_random)
@@ -184,7 +198,7 @@ class Battleship1(gym.Env):
 		self.counter = 0
 		self.done = 0
 		# self.add = [0, 0]
-		self.reward = 0
+		self.reward = None
 		return self.hidState
 	
 	def render(self, mode='human', close=False):
