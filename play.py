@@ -2,29 +2,29 @@ import tensorflow as tf
 import numpy as np
 
 def convertToReadable(act):
-    ret = ""
-    i = act % 10
-    if (act - i) == 0:
-        ret += "A"
-    elif (act - i) == 10:
-        ret += "B"
-    elif (act - i) == 20:
-        ret += "C"
-    elif (act - i) == 30:
-        ret += "D"
-    elif (act - i) == 40:
-        ret += "E"
-    elif (act - i) == 50:
-        ret += "F"
-    elif (act - i) == 60:
-        ret += "G"
-    elif (act - i) == 70:
-        ret += "H"
-    elif (act - i) == 80:
-        ret += "I"
-    elif (act - i) == 90:
-        ret += "A"
-    ret += str(i + 1)
+	ret = ""
+	i = act % 10
+	if (act - i) == 0:
+		ret += "A"
+	elif (act - i) == 10:
+		ret += "B"
+	elif (act - i) == 20:
+		ret += "C"
+	elif (act - i) == 30:
+		ret += "D"
+	elif (act - i) == 40:
+		ret += "E"
+	elif (act - i) == 50:
+		ret += "F"
+	elif (act - i) == 60:
+		ret += "G"
+	elif (act - i) == 70:
+		ret += "H"
+	elif (act - i) == 80:
+		ret += "I"
+	elif (act - i) == 90:
+		ret += "A"
+	ret += str(i + 1)
 
 
 battleModel = tf.keras.models.load_model('saved_model/my_model')
