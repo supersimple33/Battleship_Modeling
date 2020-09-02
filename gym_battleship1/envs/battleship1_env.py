@@ -1,19 +1,13 @@
 import gym
 from gym import error, spaces, utils
-from gym.utils import seeding
 
 import enum
-from random import randint
+# from random import randint seeding replaces
 
 class Space(enum.Enum):
 	Empty = "|-|" #_
+
 	Miss = "!M!" #m
-	
-	HiddenTwo = "|2|"
-	HiddenSub = "|S|"
-	HiddenCruiser = "|C|"
-	HiddenFour = "|4|"
-	HiddenFive = "|5|"
 	
 	HitPTwo = "(2)"
 	HitPSub = "(S)"
@@ -27,14 +21,21 @@ class Space(enum.Enum):
 	SunkFour = "x4x"
 	SunkFive = "x5x"
 
+	HiddenTwo = "|2|"
+	HiddenSub = "|S|"
+	HiddenCruiser = "|C|"
+	HiddenFour = "|4|"
+	HiddenFive = "|5|"
+
 #game code
 class Battleship1(gym.Env):
 	metadata = {'render.modes': ['human']}
 
 	def __init__(self):
 		self.state = [[Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10]
+		self.hidState = [[Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10]
 		i = 0
-		while (i < 5):
+		while (i < 5): #refactor out
 			len = [5, 4, 3, 3, 2][i]
 			ship = [Space.HiddenFive, Space.HiddenFour, Space.HiddenCruiser, Space.HiddenSub, Space.HiddenTwo][i]
 			x = randint(0,9)
@@ -51,6 +52,12 @@ class Battleship1(gym.Env):
 		self.done = 0
 		# self.add = [0, 0]
 		self.reward = 0
+
+		# Action and observations spaces
+		self.action_space = spaces.Discrete(100)
+		self.observation_space = spaces.Tuple([
+    		spaces.MultiDiscrete([12, 12, 12, 12, 12, 12, 12, 12, 12, 12]) for _ in range(10)
+		])
 	
 	def check(self):
 		if self.counter < 16:
@@ -73,60 +80,71 @@ class Battleship1(gym.Env):
 
 		if self.done == 1:
 			print("Game Over")
-			return [self.hidState(), self.reward, self.done, True, hit] #check return
+			return [self.hidState, self.reward, self.done, True, hit] #check return
 		else:
 			if targetSpace == Space.Empty:
 				self.state[y][x] = Space.Miss
+				self.hidState[y][x] = Space.Miss
 			elif targetSpace == Space.HiddenTwo:
 				hit = True
 				self.state[y][x] = Space.HitPTwo
+				self.hidState[y][x] = Space.HitPTwo
 				if not self.checkForSpace(Space.HiddenTwo):
 					for row in range(10):
 						for col in range(10):
 							if self.state[row][col] == Space.HitPTwo:
 								self.state[row][col] = Space.SunkTwo
+								self.hidState[row][col] = Space.SunkTwo
 			elif targetSpace == Space.HiddenSub:
 				hit = True
 				self.state[y][x] = Space.HitPSub
+				self.hidState[y][x] = Space.HitPSub
 				if not self.checkForSpace(Space.HiddenSub):
 					for row in range(10):
 						for col in range(10):
 							if self.state[row][col] == Space.HitPSub:
 								self.state[row][col] = Space.SunkSub
+								self.hidState[row][col] = Space.SunkSub
 			elif targetSpace == Space.HiddenCruiser:
 				hit = True
 				self.state[y][x] = Space.HitPCruiser
+				self.hidState[y][x] = Space.HitPCruiser
 				if not self.checkForSpace(Space.HiddenCruiser):
 					for row in range(10):
 						for col in range(10):
 							if self.state[row][col] == Space.HitPCruiser:
 								self.state[row][col] = Space.SunkCruiser
+								self.hidState[row][col] = Space.SunkCruiser
 			elif targetSpace == Space.HiddenFour:
 				hit = True
 				self.state[y][x] = Space.HitPFour
+				self.hidState[y][x] = Space.HitPFour
 				if not self.checkForSpace(Space.HiddenFour):
 					for row in range(10):
 						for col in range(10):
 							if self.state[row][col] == Space.HitPFour:
 								self.state[row][col] = Space.SunkFour
+								self.hidState[row][col] = Space.SunkFour
 			elif targetSpace == Space.HiddenFive:
 				hit = True
 				self.state[y][x] = Space.HitPFive
+				self.hidState[y][x] = Space.HitPFive
 				if not self.checkForSpace(Space.HiddenFive):
 					for row in range(10):
 						for col in range(10):
 							if self.state[row][col] == Space.HitPFive:
 								self.state[row][col] = Space.SunkFive
+								self.hidState[row][col] = Space.SunkFive
 			else:
 				# print("Misfire")
-				return [self.hidState(), self.reward, self.done, False, hit]
+				return [self.hidState, self.reward, self.done, False, hit]
 			self.counter += 1
 		win = self.check()
 		if win:
 			self.done = 1
 			print("Game over: ", self.counter, " moves.", sep = "", end = "\n")
 			self.reward = 100 - self.counter
-		return [self.hidState(), self.reward, self.done, True, hit]
+		return [self.hidState, self.reward, self.done, True, hit]
 
 	def reset(self):
 		self.state = [[Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10]
@@ -158,32 +176,8 @@ class Battleship1(gym.Env):
 			print(ret)
 			ret = ""
 		print()
-	
-	
-	def hidState(self): #map without hidden
-		ret = [None]*100
-		for y in range(10):
-			for x in range(10):
-				elem = self.state[y][x]
-				if ((elem == Space.HiddenTwo) or (elem == Space.HiddenSub) or (elem == Space.HiddenCruiser) or (elem == Space.HiddenFour) or (elem == Space.HiddenFive) or (elem == Space.Empty)):
-					ret[(y * 10) + x] = 0
-				elif elem == Space.Miss:
-					ret[(y * 10) + x] = -1
-				elif ((elem == Space.HitPTwo) or (elem == Space.HitPSub) or (elem == Space.HitPCruiser) or (elem == Space.HitPFour) or (elem == Space.HitPFive)):
-					ret[(y * 10) + x] = 1
-				elif elem == Space.SunkTwo:
-					ret[(y * 10) + x] = 11
-				elif elem == Space.SunkSub:
-					ret[(y * 10) + x] = 22
-				elif elem == Space.SunkCruiser:
-					ret[(y * 10) + x] = 33
-				elif elem == Space.SunkFour:
-					ret[(y * 10) + x] = 44
-				elif elem == Space.SunkFive:
-					ret[(y * 10) + x] = 55
-		return ret
 
-	def addShip(self, ship, len, x, y, d):
+	def _addShip(self, ship, len, x, y, d):
 		r = range(0, len)
 		# print(self.boardRep())
 		if d == 0:
@@ -212,3 +206,6 @@ class Battleship1(gym.Env):
 				self.state[y][x - j] = ship
 		return True
 
+	def seed(self, seed=None):
+		self.np_random, seed = utils.seeding.np_random()
+		return [seed]
