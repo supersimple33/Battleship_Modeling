@@ -108,7 +108,8 @@ class Battleship1(gym.Env):
 				self.state[y + d][x] = replace
 				self.hidState[y + d][x] = replace
 				len_ -= 1
-				for e in range(1,len_):
+				for eLow in range(1,len_):
+					e = eLow + 1
 					if self.state[y + (d * e)][x] == search:
 						self.state[y + (d * e)][x] = replace
 						self.hidState[y + (d * e)][x] = replace
@@ -122,7 +123,8 @@ class Battleship1(gym.Env):
 				self.state[y][x + d] = replace
 				self.hidState[y][x + d] = replace
 				len_ -= 1
-				for e in range(1,len_):
+				for eLow in range(1,len_):
+					e = eLow + 1
 					if self.state[y][x + (d*e)] == search:
 						self.state[y][x + (d*e)] = replace
 						self.hidState[y][x + (d*e)] = replace
