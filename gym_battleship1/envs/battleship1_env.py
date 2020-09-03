@@ -98,7 +98,7 @@ class Battleship1(gym.Env):
 
 		# Action and observations spaces
 
-	def searchAndReplace(self, x, y, len_, search, replace):
+	def _searchAndReplace(self, x, y, len_, search, replace):
 		self.state[y][x] = replace
 		direc = (-1,1)
 		for d in direc:
@@ -109,9 +109,9 @@ class Battleship1(gym.Env):
 				self.hidState[y + d][x] = replace
 				len_ -= 1
 				for e in range(1,len_):
-					if self.state[y + (d*e)][x] == search:
-						self.state[y + (d*e)][x] = replace
-						self.hidState[y + (d*e)][x] = replace
+					if self.state[y + (d * e)][x] == search:
+						self.state[y + (d * e)][x] = replace
+						self.hidState[y + (d * e)][x] = replace
 						len_ -= 1
 					else:
 						break
@@ -149,33 +149,33 @@ class Battleship1(gym.Env):
 				self.hidState[y][x] = Space.HitPTwo
 				self.hitsOnShips[4] = self.hitsOnShips[4] + 1
 				if self.hitsOnShips[4] == 2:
-					self.searchAndReplace(x, y, self.hitsOnShips[4], Space.HitPTwo, Space.SunkTwo)
+					self._searchAndReplace(x, y, self.hitsOnShips[4], Space.HitPTwo, Space.SunkTwo)
 			elif targetSpace == Space.HiddenSub:
 				hit = True
 				self.state[y][x] = Space.HitPSub
 				self.hidState[y][x] = Space.HitPSub
 				self.hitsOnShips[3] = self.hitsOnShips[3] + 1
 				if self.hitsOnShips[3] == 3:
-					self.searchAndReplace(x, y, self.hitsOnShips[3], Space.HitPSub, Space.SunkSub)
+					self._searchAndReplace(x, y, self.hitsOnShips[3], Space.HitPSub, Space.SunkSub)
 			elif targetSpace == Space.HiddenCruiser:
 				hit = True
 				self.state[y][x] = Space.HitPCruiser
 				self.hidState[y][x] = Space.HitPCruiser
 				self.hitsOnShips[2] = self.hitsOnShips[2] + 1
 				if self.hitsOnShips[2] == 3:
-					self.searchAndReplace(x, y, self.hitsOnShips[2], Space.HitPCruiser, Space.SunkCruiser)
+					self._searchAndReplace(x, y, self.hitsOnShips[2], Space.HitPCruiser, Space.SunkCruiser)
 			elif targetSpace == Space.HiddenFour:
 				hit = True
 				self.state[y][x] = Space.HitPFour
 				self.hitsOnShips[1] = self.hitsOnShips[1] + 1
 				if self.hitsOnShips[1] == 4:
-					self.searchAndReplace(x, y, self.hitsOnShips[1], Space.HitPFour, Space.SunkFour)
+					self._searchAndReplace(x, y, self.hitsOnShips[1], Space.HitPFour, Space.SunkFour)
 			elif targetSpace == Space.HiddenFive:
 				hit = True
 				self.state[y][x] = Space.HitPFive
 				self.hitsOnShips[0] = self.hitsOnShips[0] + 1
 				if self.hitsOnShips[0] == 5:
-					self.searchAndReplace(x, y, self.hitsOnShips[0], Space.HitPFive, Space.SunkFive)
+					self._searchAndReplace(x, y, self.hitsOnShips[0], Space.HitPFive, Space.SunkFive)
 			else:
 				# print("Misfire")
 				self.done = 1
@@ -202,12 +202,15 @@ class Battleship1(gym.Env):
 		return self.hidState
 	
 	def render(self, mode='human', close=False):
-		ret = ""
+		ret = "0 "
+		print("   0   1   2   3   4   5   6   7   8   9 ")
+		i =  0
 		for row in self.state:
 			for slot in row:
 				ret += slot.value + " "
 			print(ret)
-			ret = ""
+			i += 1
+			ret = str(i) + " "
 		print()
 
 	def seed(self, seed=None):
