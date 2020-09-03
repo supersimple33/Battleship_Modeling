@@ -36,11 +36,13 @@ for each_game in range(10):
 		print(action, prev_obs)
 
 		choices.append(action)
-		new_observation, reward, done, succ, hit = env.step(action)
+		new_observation, reward, done, info = env.step(action)
+		succ, hit = info
+
 		prev_obs = new_observation
 		prev_action = action
 		if done:
-			score.append(env.counter)
+			scores.append(env.counter)
 			break
 
 	env.reset()
