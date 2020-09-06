@@ -17,7 +17,7 @@ import builtins
 
 NUM_GAMES = 100000
 FILTERS = 64 # 64 because its cool
-EPSILON = 0.0
+EPSILON = 0.5
 
 def convLayerCluster(inp):
 	m = Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg)(inp)
@@ -33,7 +33,7 @@ def residualLayerCluster(inp):
 
 #BUILDING MODEL
 reg = tf.keras.regularizers.L2(l2=0.0001)
-inputLay = tf.keras.Input(shape=(10,10,6))#12
+inputLay = tf.keras.Input(shape=(10,10,1))#12
 
 m = Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,input_shape=(12,10,10))(inputLay)
 m = BatchNormalization(axis=1)(m)
@@ -43,7 +43,7 @@ m = residualLayerCluster(m)
 m = residualLayerCluster(m)
 m = residualLayerCluster(m)
 
-m = Conv2D(filters=6,kernel_size=(1,1),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg)(m) #12
+m = Conv2D(filters=1,kernel_size=(1,1),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg)(m) #12
 m = BatchNormalization(axis=1)(m)
 m = LeakyReLU()(m)
 
@@ -57,30 +57,37 @@ model = tf.keras.Model(inputs=inputLay, outputs=m)
 ct = time.time()
 env = gym.make('battleship1-v1')
 
-# @tf.function
+@tf.function
 def makeMove(obs):
 	if EPSILON > 0:
-		r = env.np_random.uniform()
+		r = tf.random.uniform(shape=[],dtype=tf.dtypes.float16)
 		if r < EPSILON:
-			return env.np_random.randint(0,99)
-	logits = model.predict(obs)
-	return tf.argmax(logits, 1)
+			return tf.random.uniform(shape=[],maxval=100,dtype=tf.dtypes.int64)
+		else:
+			logits = model.predict_step(obs)
+			return tf.argmax(logits, 1)[0]
+	logits = model.predict_step(obs)
+	return tf.argmax(logits, 1)[0]
 
 # def singleStepConv():
 
 for epoch in range(0,NUM_GAMES):
 	prevObs = env.reset()
+	prevObs = [[y.value[0] for y in x] for x in prevObs]
+	prevObs = tf.convert_to_tensor([prevObs])
 
 	moveTracker = deque()
 
 	done = False
 
 	while not done:
-		prevObs = [map(lambda y: y.value[0], x) for x in prevObs]
-		prevObs = tf.convert_to_tensor(prevObs)
 		move = makeMove(prevObs)
+		print(move.numpy())
 		prevObs, reward, done = env.step(move)
+		prevObs = [[y.value[0] for y in x] for x in prevObs]
+		prevObs = tf.convert_to_tensor([prevObs])
 
+		# moveTracker
 		if reward:
 			pass
 		
