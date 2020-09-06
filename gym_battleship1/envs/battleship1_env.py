@@ -4,28 +4,29 @@ from gym import error, spaces, utils
 import enum
 # from random import randint seeding replaces
 
+# indList = ("|-|","!M!","(2)","(S)","(C)","(4)","(5)",3"x2x","xSx","xCx","x4x","x5x","|2|","|S|","|C|","|4|","|5|","HiddenCruiser")
 class Space(enum.Enum):
-	Empty = "|-|" #_
+	Empty = 0,"|-|" #_
 
-	Miss = "!M!" #m
+	Miss = 1,"!M!" #m
 	
-	HitPTwo = "(2)"
-	HitPSub = "(S)"
-	HitPCruiser = "(C)"
-	HitPFour = "(4)"
-	HitPFive = "(5)"
+	HitPTwo = 2,"(2)"
+	HitPSub = 3,"(S)"
+	HitPCruiser = 4,"(C)"
+	HitPFour = 5,"(4)"
+	HitPFive = 6,"(5)"
 
-	SunkTwo = "x2x"
-	SunkSub = "xSx"
-	SunkCruiser = "xCx"
-	SunkFour = "x4x"
-	SunkFive = "x5x"
+	SunkTwo = 7,"x2x"
+	SunkSub = 8,"xSx"
+	SunkCruiser = 9,"xCx"
+	SunkFour = 10,"x4x"
+	SunkFive = 11,"x5x"
 
-	HiddenTwo = "|2|"
-	HiddenSub = "|S|"
-	HiddenCruiser = "|C|"
-	HiddenFour = "|4|"
-	HiddenFive = "|5|"
+	HiddenTwo = 12,"|2|"
+	HiddenSub = 13,"|S|"
+	HiddenCruiser = 14,"|C|"
+	HiddenFour = 15,"|4|"
+	HiddenFive = 16,"|5|"
 
 def addShip(state, ship, len_, x, y, d):
 		r = range(0, len_)
@@ -136,60 +137,61 @@ class Battleship1(gym.Env):
 		x = target % 10
 		y = target // 10
 		targetSpace = self.state[y][x]
-		hit = False
+		self.reward = False
+		# hit = False
 
-		if self.done == 1:
+		if self.done == True:
 			print("Game Over")
-			return [self.hidState, self.reward, self.done, (True, hit)] #check return
+			return [self.hidState, self.reward, self.done] #check return
 		else:
 			if targetSpace == Space.Empty:
 				self.state[y][x] = Space.Miss
 				self.hidState[y][x] = Space.Miss
 			elif targetSpace == Space.HiddenTwo:
-				hit = True
+				self.reward = True
 				self.state[y][x] = Space.HitPTwo
 				self.hidState[y][x] = Space.HitPTwo
 				self.hitsOnShips[4] = self.hitsOnShips[4] + 1
 				if self.hitsOnShips[4] == 2:
 					self._searchAndReplace(x, y, self.hitsOnShips[4], Space.HitPTwo, Space.SunkTwo)
 			elif targetSpace == Space.HiddenSub:
-				hit = True
+				self.reward = True
 				self.state[y][x] = Space.HitPSub
 				self.hidState[y][x] = Space.HitPSub
 				self.hitsOnShips[3] = self.hitsOnShips[3] + 1
 				if self.hitsOnShips[3] == 3:
 					self._searchAndReplace(x, y, self.hitsOnShips[3], Space.HitPSub, Space.SunkSub)
 			elif targetSpace == Space.HiddenCruiser:
-				hit = True
+				self.reward = True
 				self.state[y][x] = Space.HitPCruiser
 				self.hidState[y][x] = Space.HitPCruiser
 				self.hitsOnShips[2] = self.hitsOnShips[2] + 1
 				if self.hitsOnShips[2] == 3:
 					self._searchAndReplace(x, y, self.hitsOnShips[2], Space.HitPCruiser, Space.SunkCruiser)
 			elif targetSpace == Space.HiddenFour:
-				hit = True
+				self.reward = True
 				self.state[y][x] = Space.HitPFour
 				self.hitsOnShips[1] = self.hitsOnShips[1] + 1
 				if self.hitsOnShips[1] == 4:
 					self._searchAndReplace(x, y, self.hitsOnShips[1], Space.HitPFour, Space.SunkFour)
 			elif targetSpace == Space.HiddenFive:
-				hit = True
+				self.reward = True
 				self.state[y][x] = Space.HitPFive
 				self.hitsOnShips[0] = self.hitsOnShips[0] + 1
 				if self.hitsOnShips[0] == 5:
 					self._searchAndReplace(x, y, self.hitsOnShips[0], Space.HitPFive, Space.SunkFive)
 			else:
 				# print("Misfire")
-				self.done = 1
-				self.reward = 0
-				return [self.hidState, self.reward, self.done, (False, hit)]
+				self.done = True
+				self.reward = False
+				return [self.hidState, self.reward, self.done]
 			self.counter += 1
 		win = self.hitsOnShips == [5,4,3,3,2]
 		if win:
-			self.done = 1
+			self.done = True
 			print("Game over: ", self.counter, " moves.", sep = "", end = "\n")
 			self.reward = 100 - self.counter
-		return [self.hidState, self.reward, self.done, (True, hit)]
+		return [self.hidState, self.reward, self.done]
 
 	def reset(self):
 		self.state = setupShips(self.np_random)
@@ -198,7 +200,7 @@ class Battleship1(gym.Env):
 		self.hitsOnShips = [0, 0, 0, 0, 0]
 
 		self.counter = 0
-		self.done = 0
+		self.done = False
 		# self.add = [0, 0]
 		self.reward = None
 		return self.hidState
@@ -209,7 +211,7 @@ class Battleship1(gym.Env):
 		i =  0
 		for row in self.state:
 			for slot in row:
-				ret += slot.value + " "
+				ret += slot.value[1] + " "
 			print(ret)
 			i += 1
 			ret = str(i) + " "
