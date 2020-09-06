@@ -6,21 +6,22 @@
 import tensorflow as tf
 from tensorflow.keras.layers import Conv2D, BatchNormalization, LeakyReLU, Add, Flatten, Dense
 
+import numpy as np
+
 import gym
 import gym_battleship1
-import timeit
-
-import time
-from collections import deque
 
 import builtins
+import timeit # DEBUG Only
+import time
+# from collections import deques
 
 # MODEL TWEAKS
 NUM_GAMES = 100000
 FILTERS = 64 # 64 because its cool
 EPSILON = 0.5
-LEARNING_RATE = 0.01
-MOMENTUM = 0.0
+LEARNING_RATE = 0.1
+MOMENTUM = 0.9
 
 def convLayerCluster(inp):
 	m = Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg)(inp)
@@ -57,8 +58,11 @@ m = Dense(100,activation='sigmoid')(m)
 
 model = tf.keras.Model(inputs=inputLay, outputs=m)
 
-loss = tf.nn.softmax_cross_entropy_with_logits
+lossFunc = tf.nn.softmax_cross_entropy_with_logits
 optim = tf.keras.optimizers.SGD(lr=LEARNING_RATE, momentum = MOMENTUM)
+error = tf.keras.metrics.MeanAbsoluteError()
+accuracy = tf.keras.metrics.CategoricalAccuracy()
+model.compile(optimizer=optim,loss=lossFunc,loss_weights=[0.5],metrics=[error,accuracy])
 # print(model.summary())
 
 # Globals
@@ -78,7 +82,8 @@ def makeMove(obs):
 	return tf.argmax(logits, 1)[0]
 
 # def singleStepConv():
-
+hits = 0
+iters = 0
 for epoch in range(0,NUM_GAMES):
 	prevObs = env.reset()
 	prevObs = [[y.value[0] for y in x] for x in prevObs]
@@ -90,18 +95,28 @@ for epoch in range(0,NUM_GAMES):
 
 	while not done:
 		# Could Accelerate this, however few tf methods, and a couple of outside methods
-		move = makeMove(prevObs)
-		print(move.numpy())
+		move = makeMove(prevObs).numpy()
+		# print(move.numpy())
 		obs, reward, done = env.step(move)
 		obs = [[y.value[0] for y in x] for x in obs]
 
 		out = tf.Variable(tf.zeros([100]))
+		# out = np.zeros(100)
 		if reward:
+			hits += 1
 			out[move].assign(1.)
 
-		observations.append(prevObs)
+		observations.append(prevObs[0])
 		expecteds.append(out)
 
 		prevObs = tf.convert_to_tensor([obs])
+		iters += 1
 	
-	model.fit(x=observations,y=expecteds,epochs=1,use_multiprocessing=True)
+	observations = tf.stack(observations)
+	expecteds = tf.stack(expecteds)
+	
+	model.train_on_batch(x=observations,y=expecteds,reset_metrics=False)
+
+	if (epoch+1) % (NUM_GAMES // 20) == 0:
+		print("Completed %d epochs")
+		print(error.result().numpy(), accuracy.result().numpy(), hits / iters)
