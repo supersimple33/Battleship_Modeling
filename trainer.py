@@ -17,7 +17,7 @@ import time
 # from collections import deques
 
 # MODEL TWEAKS
-NUM_GAMES = 100000
+NUM_GAMES = 1000
 FILTERS = 64 # 64 because its cool
 EPSILON = 0.5
 LEARNING_RATE = 0.1
@@ -83,7 +83,7 @@ def makeMove(obs):
 
 # def singleStepConv():
 hits = 0
-iters = 0
+iterartions = 0
 for epoch in range(0,NUM_GAMES):
 	prevObs = env.reset()
 	prevObs = [[y.value[0] for y in x] for x in prevObs]
@@ -110,7 +110,7 @@ for epoch in range(0,NUM_GAMES):
 		expecteds.append(out)
 
 		prevObs = tf.convert_to_tensor([obs])
-		iters += 1
+		iterartions += 1
 	
 	observations = tf.stack(observations)
 	expecteds = tf.stack(expecteds)
@@ -118,5 +118,11 @@ for epoch in range(0,NUM_GAMES):
 	model.train_on_batch(x=observations,y=expecteds,reset_metrics=False)
 
 	if (epoch+1) % (NUM_GAMES // 20) == 0:
-		print("Completed %d epochs")
-		print(error.result().numpy(), accuracy.result().numpy(), hits / iters)
+		print(f"Completed {NUM_GAMES // 20} at e{EPSILON} epochs in {round(time.time() - ct, 3)}s. E={round(float(error.result().numpy()),6)} A={round(float(accuracy.result().numpy()),6)} H={round(hits / iterartions,6)}")
+		ct = time.time()
+		error.reset_states()
+		accuracy.reset_states()
+		hits = 0
+		iterartions = 0
+
+model.save('saved_model/my_model')
