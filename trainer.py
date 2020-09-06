@@ -17,9 +17,9 @@ import time
 # from collections import deques
 
 # MODEL TWEAKS
-NUM_GAMES = 1000
+NUM_GAMES = 3000
 FILTERS = 64 # 64 because its cool
-EPSILON = 0.5
+EPSILON = 1.0
 LEARNING_RATE = 0.1
 MOMENTUM = 0.9
 
@@ -62,6 +62,7 @@ lossFunc = tf.nn.softmax_cross_entropy_with_logits
 optim = tf.keras.optimizers.SGD(lr=LEARNING_RATE, momentum = MOMENTUM)
 error = tf.keras.metrics.MeanAbsoluteError()
 accuracy = tf.keras.metrics.CategoricalAccuracy()
+gameLength = tf.keras.metrics.Mean()
 model.compile(optimizer=optim,loss=lossFunc,loss_weights=[0.5],metrics=[error,accuracy])
 # print(model.summary())
 
@@ -69,9 +70,10 @@ model.compile(optimizer=optim,loss=lossFunc,loss_weights=[0.5],metrics=[error,ac
 ct = time.time()
 env = gym.make('battleship1-v1')
 
-@tf.function # Decoration is 10 fold faster
-def makeMove(obs):
-	if EPSILON > 0:
+# @tf.function # Decoration is 10 fold faster
+def makeMove(obs,e):
+	# print("Traced with " + str(e))
+	if e > 0:
 		r = tf.random.uniform(shape=[],dtype=tf.dtypes.float16)
 		if r < EPSILON:
 			return tf.random.uniform(shape=[],maxval=100,dtype=tf.dtypes.int64)
@@ -95,7 +97,7 @@ for epoch in range(0,NUM_GAMES):
 
 	while not done:
 		# Could Accelerate this, however few tf methods, and a couple of outside methods
-		move = makeMove(prevObs).numpy()
+		move = makeMove(prevObs,EPSILON).numpy()
 		# print(move.numpy())
 		obs, reward, done = env.step(move)
 		obs = [[y.value[0] for y in x] for x in obs]
@@ -111,18 +113,27 @@ for epoch in range(0,NUM_GAMES):
 
 		prevObs = tf.convert_to_tensor([obs])
 		iterartions += 1
+		if done:
+			gameLength.update_state(env.counter)
 	
 	observations = tf.stack(observations)
 	expecteds = tf.stack(expecteds)
 	
 	model.train_on_batch(x=observations,y=expecteds,reset_metrics=False)
 
-	if (epoch+1) % (NUM_GAMES // 20) == 0:
-		print(f"Completed {NUM_GAMES // 20} at e{EPSILON} epochs in {round(time.time() - ct, 3)}s. E={round(float(error.result().numpy()),6)} A={round(float(accuracy.result().numpy()),6)} H={round(hits / iterartions,6)}")
-		ct = time.time()
+	if (epoch+1) % (NUM_GAMES // 30) == 0:
+		print(f"Completed {epoch} epochs at {round(EPSILON,7)} in {round(time.time() - ct, 3)}s. E={round(float(error.result().numpy()),6)} A={round(float(accuracy.result().numpy()),6)} H={round(hits / iterartions,6)} L={round(float(gameLength.result().numpy()),3)}")
 		error.reset_states()
 		accuracy.reset_states()
+		gameLength.reset_states()
 		hits = 0
 		iterartions = 0
+		if EPSILON > 0.07:
+			EPSILON -= 0.05
+		else:
+			EPSILON /= 1.75
+		ct = time.time()
+		# x = tf.function(makeMove)
 
-model.save('saved_model/my_model')
+model.save('saved_model/short')
+print("Model Saved")
