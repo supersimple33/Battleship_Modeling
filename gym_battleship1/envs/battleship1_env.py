@@ -103,6 +103,8 @@ class Battleship1(gym.Env):
 		self.state[y][x] = replace
 		direc = (-1,1)
 		for d in direc:
+			if (y+d) > 9 or (y+d) < 0:
+				continue
 			if len_ == 0:
 				continue
 			if self.state[y + d][x] == search:
@@ -118,6 +120,8 @@ class Battleship1(gym.Env):
 					else:
 						break
 		for d in direc:
+			if (x+d) > 9 or (x+d) < 0:
+				continue
 			if len_ == 0:
 				continue
 			if self.state[y][x + d] == search:
