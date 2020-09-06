@@ -15,9 +15,12 @@ from collections import deque
 
 import builtins
 
+# MODEL TWEAKS
 NUM_GAMES = 100000
 FILTERS = 64 # 64 because its cool
 EPSILON = 0.5
+LEARNING_RATE = 0.01
+MOMENTUM = 0.0
 
 def convLayerCluster(inp):
 	m = Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg)(inp)
@@ -30,6 +33,8 @@ def residualLayerCluster(inp):
 	m = BatchNormalization(axis=1)(m)
 	m = Add()([inp,m])
 	return LeakyReLU()(m)
+
+# def softmax_cross_entropy_with_logits(y_true, y_pred):
 
 #BUILDING MODEL
 reg = tf.keras.regularizers.L2(l2=0.0001)
@@ -51,13 +56,16 @@ m = Flatten()(m)
 m = Dense(100,activation='sigmoid')(m)
 
 model = tf.keras.Model(inputs=inputLay, outputs=m)
+
+loss = tf.nn.softmax_cross_entropy_with_logits
+optim = tf.keras.optimizers.SGD(lr=LEARNING_RATE, momentum = MOMENTUM)
 # print(model.summary())
 
 # Globals
 ct = time.time()
 env = gym.make('battleship1-v1')
 
-@tf.function
+@tf.function # Decoration is 10 fold faster
 def makeMove(obs):
 	if EPSILON > 0:
 		r = tf.random.uniform(shape=[],dtype=tf.dtypes.float16)
@@ -76,19 +84,24 @@ for epoch in range(0,NUM_GAMES):
 	prevObs = [[y.value[0] for y in x] for x in prevObs]
 	prevObs = tf.convert_to_tensor([prevObs])
 
-	moveTracker = deque()
-
+	observations = [] # could also use deque
+	expecteds = []
 	done = False
 
 	while not done:
+		# Could Accelerate this, however few tf methods, and a couple of outside methods
 		move = makeMove(prevObs)
 		print(move.numpy())
-		prevObs, reward, done = env.step(move)
-		prevObs = [[y.value[0] for y in x] for x in prevObs]
-		prevObs = tf.convert_to_tensor([prevObs])
+		obs, reward, done = env.step(move)
+		obs = [[y.value[0] for y in x] for x in obs]
 
-		# moveTracker
+		out = tf.Variable(tf.zeros([100]))
 		if reward:
-			pass
-		
+			out[move].assign(1.)
 
+		observations.append(prevObs)
+		expecteds.append(out)
+
+		prevObs = tf.convert_to_tensor([obs])
+	
+	model.fit(x=observations,y=expecteds,epochs=1,use_multiprocessing=True)
