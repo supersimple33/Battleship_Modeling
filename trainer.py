@@ -1,3 +1,8 @@
+# builtins.__dict__.update(locals())
+# t = timeit.Timer('conved = list(map(lambda x: list(map(lambda y: y.value[0], x)), prevObs))')
+# time = t.timeit(10000)
+# print(time / 10000)
+
 import tensorflow as tf
 from tensorflow.keras.layers import Conv2D, BatchNormalization, LeakyReLU, Add, Flatten, Dense
 
@@ -12,7 +17,7 @@ import builtins
 
 NUM_GAMES = 100000
 FILTERS = 64 # 64 because its cool
-EPSILON = 1.0
+EPSILON = 0.0
 
 def convLayerCluster(inp):
 	m = Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg)(inp)
@@ -64,34 +69,17 @@ def makeMove(obs):
 # def singleStepConv():
 
 for epoch in range(0,NUM_GAMES):
-	env.reset()
+	prevObs = env.reset()
 
 	moveTracker = deque()
-
-	obsSamp = [env.observation_space.sample()]
-
-	obsSamp = tf.convert_to_tensor(obsSamp)
-	# obsSamp
-	# print()
 
 	done = False
 
 	while not done:
-		move = makeMove(obsSamp)
+		prevObs = [map(lambda y: y.value[0], x) for x in prevObs]
+		prevObs = tf.convert_to_tensor(prevObs)
+		move = makeMove(prevObs)
 		prevObs, reward, done = env.step(move)
-		builtins.__dict__.update(locals())
-
-		t = timeit.Timer('conved = list(map(lambda x: list(map(lambda y: y.value[0], x)), prevObs))')
-		time = t.timeit(10000)
-		print(time / 10000)
-
-		t = timeit.Timer('r = [[y.value[0] for y in x] for x in prevObs]')
-		time = t.timeit(10000)
-		print(time / 10000)
-		
-		t = timeit.Timer('r = [map(lambda y: y.value[0], x) for x in prevObs]')
-		time = t.timeit(10000)
-		print(time / 10000)
 
 		if reward:
 			pass
