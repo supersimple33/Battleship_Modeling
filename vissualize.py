@@ -32,15 +32,9 @@ for each_game in range(10):
 		if False:
 			pass
 		else:
-			logits = trained_model.predict_step(prev_obs)
-			action = np.argmax(logits,1)[0]
-			# suggestion = trained_model.predict([prev_obs])[0]
-			# while True:
-				# action = np.argmax(suggestion)
-			#	 if action != prev_action:
-			#		 break
-			#	 else:
-			#		 suggestion[action] = 0.0
+			logits = trained_model.predict_step(prev_obs)[0]
+
+			action = tf.argmax(logits,-1)[0].numpy()
 		
 		# print(action, prev_obs)
 

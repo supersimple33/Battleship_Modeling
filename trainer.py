@@ -19,7 +19,7 @@ import time
 # MODEL TWEAKS
 NUM_GAMES = 3000
 FILTERS = 64 # 64 because its cool
-EPSILON = 1.0
+EPSILON = 0.95 # Epsilon must start close to one or model training will scew incredibelly
 LEARNING_RATE = 0.1
 MOMENTUM = 0.9
 
@@ -122,13 +122,13 @@ for epoch in range(0,NUM_GAMES):
 	model.train_on_batch(x=observations,y=expecteds,reset_metrics=False)
 
 	if (epoch+1) % (NUM_GAMES // 30) == 0:
-		print(f"Completed {epoch} epochs at {round(EPSILON,7)} in {round(time.time() - ct, 3)}s. E={round(float(error.result().numpy()),6)} A={round(float(accuracy.result().numpy()),6)} H={round(hits / iterartions,6)} L={round(float(gameLength.result().numpy()),3)}")
+		print(f"Completed {epoch+1} epochs at {round(EPSILON,7)} in {round(time.time() - ct, 3)}s. E={round(float(error.result().numpy()),6)} A={round(float(accuracy.result().numpy()),6)} H={round(hits / iterartions,6)} L={round(float(gameLength.result().numpy()),3)}")
 		error.reset_states()
 		accuracy.reset_states()
 		gameLength.reset_states()
 		hits = 0
 		iterartions = 0
-		if EPSILON > 0.07:
+		if EPSILON > 0.06:
 			EPSILON -= 0.05
 		else:
 			EPSILON /= 1.75
