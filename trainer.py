@@ -2,6 +2,9 @@
 # t = timeit.Timer('conved = list(map(lambda x: list(map(lambda y: y.value[0], x)), prevObs))')
 # time = t.timeit(10000)
 # print(time / 10000)
+import faulthandler
+logger = open('log.txt', 'w')
+faulthandler.enable(file=logger)
 
 import tensorflow as tf
 from tensorflow.keras.layers import Conv2D, BatchNormalization, LeakyReLU, Add, Flatten, Dense
@@ -12,12 +15,12 @@ import gym
 import gym_battleship1
 
 import builtins
-import timeit # DEBUG Only
+# import timeit # DEBUG Only
 import time
 # from collections import deques
 
 # MODEL TWEAKS
-NUM_GAMES = 3300
+NUM_GAMES = 45000
 FILTERS = 64 # 64 because its cool
 EPSILON = 0.75 # Epsilon must start close to one or model training will scew incredibelly
 LEARNING_RATE = 0.1
@@ -59,7 +62,7 @@ m = Dense(100,activation='sigmoid')(m)
 
 model = tf.keras.Model(inputs=inputLay, outputs=m)
 
-# model = tf.keras.models.load_model('saved_model/my_model',compile=False)
+model = tf.keras.models.load_model('saved_model/my_model',compile=False)
 
 lossFunc = tf.keras.losses.MeanSquaredLogarithmicError()
 optim = tf.keras.optimizers.SGD(lr=LEARNING_RATE, momentum = MOMENTUM)
@@ -68,7 +71,7 @@ error = tf.keras.metrics.MeanAbsoluteError()
 accuracy = tf.keras.metrics.CategoricalAccuracy()
 gameLength = tf.keras.metrics.Mean()
 model.compile(optimizer=optim,loss=lossFunc,loss_weights=[0.5],metrics=[error,accuracy])
-# print(model.summary())
+print(model.summary())
 
 # Globals
 ct = time.time()
@@ -107,7 +110,6 @@ for epoch in range(0,NUM_GAMES):
 
 	observations = [] # could also use deque
 	expecteds = []
-	moveTracker = []
 	done = False
 
 	while not done:
@@ -123,10 +125,15 @@ for epoch in range(0,NUM_GAMES):
 			hits += 1
 			out[move].assign(1.)
 			# print(out)
+			observations.append(prevObs[0])
+			expecteds.append(out)
+		elif done:
+			observations.append(prevObs[0])
+			expecteds.append(out)
+
 
 		observations.append(prevObs[0])
 		expecteds.append(out)
-		moveTracker.append((prevObs[0],out))
 
 		prevObs = tf.convert_to_tensor([obs])
 		iterartions += 1

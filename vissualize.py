@@ -33,8 +33,9 @@ for each_game in range(10):
 			pass
 		else:
 			logits = trained_model.predict_step(prev_obs)[0]
-			print(logits)
-			action = tf.argmax(logits,-1)[0].numpy()
+			print(tf.nn.softmax(logits))
+			action = tf.argmax(logits,-1).numpy()
+			print(action, tf.nn.softmax(logits)[action].numpy())
 		
 		# print(action, prev_obs)
 
