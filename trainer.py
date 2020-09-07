@@ -17,9 +17,9 @@ import time
 # from collections import deques
 
 # MODEL TWEAKS
-NUM_GAMES = 3000
+NUM_GAMES = 3300
 FILTERS = 64 # 64 because its cool
-EPSILON = 0.95 # Epsilon must start close to one or model training will scew incredibelly
+EPSILON = 0.75 # Epsilon must start close to one or model training will scew incredibelly
 LEARNING_RATE = 0.1
 MOMENTUM = 0.9
 
@@ -55,12 +55,16 @@ m = LeakyReLU()(m)
 
 m = Flatten()(m)
 m = Dense(100,activation='sigmoid')(m)
+# m = Dense(100,activation='softmax')(m)
 
 model = tf.keras.Model(inputs=inputLay, outputs=m)
 
-lossFunc = tf.nn.softmax_cross_entropy_with_logits
+# model = tf.keras.models.load_model('saved_model/my_model',compile=False)
+
+lossFunc = tf.keras.losses.MeanSquaredLogarithmicError()
 optim = tf.keras.optimizers.SGD(lr=LEARNING_RATE, momentum = MOMENTUM)
 error = tf.keras.metrics.MeanAbsoluteError()
+# error = tf.keras.metrics.Mean()
 accuracy = tf.keras.metrics.CategoricalAccuracy()
 gameLength = tf.keras.metrics.Mean()
 model.compile(optimizer=optim,loss=lossFunc,loss_weights=[0.5],metrics=[error,accuracy])
@@ -70,7 +74,7 @@ model.compile(optimizer=optim,loss=lossFunc,loss_weights=[0.5],metrics=[error,ac
 ct = time.time()
 env = gym.make('battleship1-v1')
 
-# @tf.function # Decoration is 10 fold faster
+@tf.function # Decoration is 10 fold faster
 def makeMove(obs,e):
 	# print("Traced with " + str(e))
 	if e > 0:
@@ -83,6 +87,16 @@ def makeMove(obs,e):
 	logits = model.predict_step(obs)
 	return tf.argmax(logits, 1)[0]
 
+@tf.function
+def trainGrads(feature,expect):
+	with tf.GradientTape() as tape:
+		# predictions = self.model(features)
+		predictions = model.predict_step(feature)
+		loss = lossFunc(expect, predictions)
+	gradients = tape.gradient(loss, model.trainable_variables)
+	optim.apply_gradients(zip(gradients, model.trainable_variables))
+	return loss
+
 # def singleStepConv():
 hits = 0
 iterartions = 0
@@ -93,6 +107,7 @@ for epoch in range(0,NUM_GAMES):
 
 	observations = [] # could also use deque
 	expecteds = []
+	moveTracker = []
 	done = False
 
 	while not done:
@@ -107,9 +122,11 @@ for epoch in range(0,NUM_GAMES):
 		if reward:
 			hits += 1
 			out[move].assign(1.)
+			# print(out)
 
 		observations.append(prevObs[0])
 		expecteds.append(out)
+		moveTracker.append((prevObs[0],out))
 
 		prevObs = tf.convert_to_tensor([obs])
 		iterartions += 1
@@ -135,5 +152,5 @@ for epoch in range(0,NUM_GAMES):
 		ct = time.time()
 		# x = tf.function(makeMove)
 
-model.save('saved_model/short')
+model.save('saved_model/my_model')
 print("Model Saved")

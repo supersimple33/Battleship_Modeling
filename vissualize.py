@@ -10,7 +10,7 @@ tensorflow.keras.losses.custom_loss = tf.nn.softmax_cross_entropy_with_logits
 env = gym.make('battleship1-v1')
 env.reset()
 
-trained_model = tf.keras.models.load_model('saved_model/my_model',compile=False)
+trained_model = tf.keras.models.load_model('saved_model/short')
 
 scores = []
 choices = []
@@ -33,7 +33,7 @@ for each_game in range(10):
 			pass
 		else:
 			logits = trained_model.predict_step(prev_obs)[0]
-
+			print(logits)
 			action = tf.argmax(logits,-1)[0].numpy()
 		
 		# print(action, prev_obs)
