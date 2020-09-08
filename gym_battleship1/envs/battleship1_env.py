@@ -225,8 +225,3 @@ class Battleship1(gym.Env):
 	def seed(self, seed=None):
 		self.np_random, seed = utils.seeding.np_random()
 		return [seed]
-
-env = Battleship1()
-for i in range(20):
-	env.step(i)
-print(env.hidState)

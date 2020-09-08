@@ -10,7 +10,7 @@ tensorflow.keras.losses.custom_loss = tf.nn.softmax_cross_entropy_with_logits
 env = gym.make('battleship1-v1')
 env.reset()
 
-trained_model = tf.keras.models.load_model('saved_model/short')
+trained_model = tf.keras.models.load_model('saved_model/my_model')
 
 scores = []
 choices = []
@@ -18,8 +18,8 @@ choices = []
 for each_game in range(1):
 	score = 0
 	prev_obs = env.reset()
-	prev_obs = [[y.value[0] for y in x] for x in prev_obs]
-	prev_obs = tf.convert_to_tensor([prev_obs])
+	prev_obs = [[[x.value[0] for x in y] for y in c] for c in prev_obs] # redo timeit with numpy
+	prev_obs = tf.reshape(tf.transpose(tf.convert_to_tensor(prev_obs)),shape=(1,10,10,6)) # ONLY NEEDED FOR CPUS
 
 	prev_action = -1
 	for step_index in range(500):
@@ -43,8 +43,8 @@ for each_game in range(1):
 		new_observation, reward, done = env.step(action)
 
 		prev_obs = new_observation
-		prev_obs = [[y.value[0] for y in x] for x in prev_obs]
-		prev_obs = tf.convert_to_tensor([prev_obs])
+		prev_obs = [[[x.value[0] for x in y] for y in c] for c in prev_obs] # redo timeit with numpy
+		prev_obs = tf.reshape(tf.transpose(tf.convert_to_tensor(prev_obs)),shape=(1,10,10,6)) # ONLY NEEDED FOR CPUS
 
 		prev_action = action
 		if done:

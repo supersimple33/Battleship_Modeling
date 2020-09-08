@@ -20,21 +20,24 @@ import builtins
 import time
 # from collections import deques
 
+print(tf.__version__)
+
 # MODEL TWEAKS
-NUM_GAMES = 3000
+NUM_GAMES = 21000
 FILTERS = 64 # 64 because its cool
-EPSILON = 0.75 # Epsilon must start close to one or model training will scew incredibelly
+EPSILON = 0.9 # Epsilon must start close to one or model training will scew incredibelly
 LEARNING_RATE = 0.002
 MOMENTUM = 0.9
+CHANNEL_TYPE = "channels_last"
 
 def convLayerCluster(inp):
-	m = Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format="channels_first")(inp)
+	m = Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=CHANNEL_TYPE)(inp)
 	m = BatchNormalization(axis=1)(m)
 	return LeakyReLU()(m)
 
 def residualLayerCluster(inp):
 	m = convLayerCluster(inp)
-	m = Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format="channels_first")(m)
+	m = Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=CHANNEL_TYPE)(m)
 	m = BatchNormalization(axis=1)(m)
 	m = Add()([inp,m])
 	return LeakyReLU()(m)
@@ -44,22 +47,22 @@ def residualLayerCluster(inp):
 #BUILDING MODEL
 reg = tf.keras.regularizers.L2(l2=0.0001)
 def buildModel():
-	inputLay = tf.keras.Input(shape=(6,10,10))#12
+	inputLay = tf.keras.Input(shape=(10,10,6))#12
 
-	m = Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,input_shape=(12,10,10),data_format="channels_first")(inputLay)
+	m = Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=CHANNEL_TYPE)(inputLay)
 	m = BatchNormalization(axis=1)(m)
 	m = LeakyReLU()(m)
 
 	m = residualLayerCluster(m)
 	m = residualLayerCluster(m)
-	m = residualLayerCluster(m)
+	# m = residualLayerCluster(m) # removed on cluster for added simplicity
 
-	m = Conv2D(filters=6,kernel_size=(1,1),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format="channels_first")(m) #12
+	m = Conv2D(filters=6,kernel_size=(1,1),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=CHANNEL_TYPE)(m) #12
 	m = BatchNormalization(axis=1)(m)
 	m = LeakyReLU()(m)
 
 	m = Flatten()(m)
-	m = Dense(100,activation='sigmoid')(m)
+	m = Dense(100,activation='softmax')(m)
 
 	return tf.keras.Model(inputs=inputLay, outputs=m)
 
@@ -108,8 +111,7 @@ iterartions = 0
 for epoch in range(0,NUM_GAMES):
 	prevObs = env.reset()
 	prevObs = [[[x.value[0] for x in y] for y in c] for c in prevObs] # redo timeit with numpy
-	prevObs[1][0][0] = 1
-	prevObs = tf.convert_to_tensor([prevObs])
+	prevObs = tf.reshape(tf.transpose(tf.convert_to_tensor(prevObs)),shape=(1,10,10,6)) # ONLY NEEDED FOR CPUS
 	# prevObs = tf.reshape(prevObs, (1,10,10,6))
 
 	observations = [] # could also use deque
@@ -135,11 +137,11 @@ for epoch in range(0,NUM_GAMES):
 			observations.append(prevObs[0])
 			expecteds.append(out)
 
-
-		observations.append(prevObs[0])
-		expecteds.append(out)
+		# observations.append(prevObs[0])
+		# expecteds.append(out)
 
 		prevObs = tf.convert_to_tensor([obs])
+		prevObs = tf.reshape(tf.transpose(tf.convert_to_tensor(prevObs)),shape=(1,10,10,6))
 		iterartions += 1
 		if done:
 			gameLength.update_state(env.counter)
@@ -157,7 +159,7 @@ for epoch in range(0,NUM_GAMES):
 		hits = 0
 		iterartions = 0
 		if EPSILON > 0.06:
-			EPSILON -= 0.05
+			EPSILON -= 0.01
 		else:
 			EPSILON /= 1.75
 		ct = time.time()

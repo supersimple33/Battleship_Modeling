@@ -1,0 +1,11 @@
+Fatal Python error: Segmentation fault
+
+Thread 0x0000000110427dc0 (most recent call first):
+  File "/Users/addisonhanrattie/.local/share/virtualenvs/Battleship_Modeling-bC-KHDcD/lib/python3.8/site-packages/tensorflow/python/eager/execute.py", line 59 in quick_execute
+  File "/Users/addisonhanrattie/.local/share/virtualenvs/Battleship_Modeling-bC-KHDcD/lib/python3.8/site-packages/tensorflow/python/eager/function.py", line 545 in call
+  File "/Users/addisonhanrattie/.local/share/virtualenvs/Battleship_Modeling-bC-KHDcD/lib/python3.8/site-packages/tensorflow/python/eager/function.py", line 1923 in _call_flat
+  File "/Users/addisonhanrattie/.local/share/virtualenvs/Battleship_Modeling-bC-KHDcD/lib/python3.8/site-packages/tensorflow/python/eager/function.py", line 1843 in _filtered_call
+  File "/Users/addisonhanrattie/.local/share/virtualenvs/Battleship_Modeling-bC-KHDcD/lib/python3.8/site-packages/tensorflow/python/eager/function.py", line 2829 in __call__
+  File "/Users/addisonhanrattie/.local/share/virtualenvs/Battleship_Modeling-bC-KHDcD/lib/python3.8/site-packages/tensorflow/python/eager/def_function.py", line 814 in _call
+  File "/Users/addisonhanrattie/.local/share/virtualenvs/Battleship_Modeling-bC-KHDcD/lib/python3.8/site-packages/tensorflow/python/eager/def_function.py", line 780 in __call__
+  File "trainer.py", line 123 in <module>
