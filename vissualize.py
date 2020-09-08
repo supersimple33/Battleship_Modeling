@@ -15,7 +15,7 @@ trained_model = tf.keras.models.load_model('saved_model/short')
 scores = []
 choices = []
 
-for each_game in range(10):
+for each_game in range(1):
 	score = 0
 	prev_obs = env.reset()
 	prev_obs = [[y.value[0] for y in x] for x in prev_obs]
