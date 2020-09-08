@@ -2,6 +2,7 @@ import gym
 from gym import error, spaces, utils
 
 import enum
+import numpy as np
 # from random import randint seeding replaces
 
 # indList = ("|-|","!M!","(2)","(S)","(C)","(4)","(5)",3"x2x","xSx","xCx","x4x","x5x","|2|","|S|","|C|","|4|","|5|","HiddenCruiser")
@@ -10,19 +11,19 @@ class Space(enum.Enum):
 
 	Miss = 1,"!M!" #m
 	
-	HitPTwo = 2,"(2)"
-	HitPSub = 3,"(S)"
-	HitPCruiser = 4,"(C)"
-	HitPFour = 5,"(4)"
-	HitPFive = 6,"(5)"
+	HitPTwo = 1,"(2)"
+	HitPSub = 1,"(S)"
+	HitPCruiser = 1,"(C)"
+	HitPFour = 1,"(4)"
+	HitPFive = 1,"(5)"
 
-	SunkTwo = 7,"x2x"
-	SunkSub = 8,"xSx"
-	SunkCruiser = 9,"xCx"
-	SunkFour = 10,"x4x"
-	SunkFive = 11,"x5x"
+	SunkTwo = -1,"x2x"
+	SunkSub = -1,"xSx"
+	SunkCruiser = -1,"xCx"
+	SunkFour = -1,"x4x"
+	SunkFive = -1,"x5x"
 
-	HiddenTwo = 12,"|2|"
+	HiddenTwo = 12,"|2|" # Need to update these values likely 1
 	HiddenSub = 13,"|S|"
 	HiddenCruiser = 14,"|C|"
 	HiddenFour = 15,"|4|"
@@ -59,7 +60,8 @@ def addShip(state, ship, len_, x, y, d):
 
 def setupShips(np_random):
 		i = 0
-		state = [[Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10]
+		# state = [[Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10]
+		state = np.full(shape=(10,10),fill_value=Space.Empty)
 		# shipIds = [0,1,2,3,4]
 		while (i < 5): #refactor outf
 			# s = np_random.choice(shipIds)
@@ -83,23 +85,20 @@ class Battleship1(gym.Env):
 
 	def __init__(self):
 		self.action_space = spaces.Discrete(100)
-		self.observation_space = spaces.Tuple([
-    		spaces.MultiDiscrete([12, 12, 12, 12, 12, 12, 12, 12, 12, 12]) for _ in range(10)
+		missesChannel = spaces.Tuple([
+    		spaces.MultiDiscrete([2, 2, 2, 2, 2, 2, 2, 2, 2, 2]) for _ in range(10)
 		])
+		regChannel = spaces.Tuple([
+    		spaces.MultiDiscrete([3, 3, 3, 3, 3, 3, 3, 3, 3, 3]) for _ in range(10)
+		])
+		self.observation_space = spaces.Tuple((missesChannel,regChannel,regChannel,regChannel,regChannel,regChannel))
 		self.seed()
 
-		# self.state = setupShips(self.np_random)
-		# self.hidState = [[Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10]
-
-		# self.counter = 0
-		# self.done = 0
-		# # self.add = [0, 0]
-		# self.reward = 0
 		self.reset()
 
 		# Action and observations spaces
 
-	def _searchAndReplace(self, x, y, len_, search, replace):
+	def _searchAndReplace(self, x, y, len_, search, replace,c):
 		self.state[y][x] = replace
 		direc = (-1,1)
 		for d in direc:
@@ -109,13 +108,13 @@ class Battleship1(gym.Env):
 				continue
 			if self.state[y + d][x] == search:
 				self.state[y + d][x] = replace
-				self.hidState[y + d][x] = replace
+				self.hidState[c][y + d][x] = replace
 				len_ -= 1
 				for eLow in range(1,len_):
 					e = eLow + 1
 					if self.state[y + (d * e)][x] == search:
 						self.state[y + (d * e)][x] = replace
-						self.hidState[y + (d * e)][x] = replace
+						self.hidState[c][y + (d * e)][x] = replace
 						len_ -= 1
 					else:
 						break
@@ -126,13 +125,13 @@ class Battleship1(gym.Env):
 				continue
 			if self.state[y][x + d] == search:
 				self.state[y][x + d] = replace
-				self.hidState[y][x + d] = replace
+				self.hidState[c][y][x + d] = replace
 				len_ -= 1
 				for eLow in range(1,len_):
 					e = eLow + 1
 					if self.state[y][x + (d*e)] == search:
 						self.state[y][x + (d*e)] = replace
-						self.hidState[y][x + (d*e)] = replace
+						self.hidState[c][y][x + (d*e)] = replace
 						len_ -= 1
 					else:
 						break
@@ -150,40 +149,42 @@ class Battleship1(gym.Env):
 		else:
 			if targetSpace == Space.Empty:
 				self.state[y][x] = Space.Miss
-				self.hidState[y][x] = Space.Miss
+				self.hidState[0][y][x] = Space.Miss
 			elif targetSpace == Space.HiddenTwo:
 				self.reward = True
 				self.state[y][x] = Space.HitPTwo
-				self.hidState[y][x] = Space.HitPTwo
+				self.hidState[1][y][x] = Space.HitPTwo
 				self.hitsOnShips[4] = self.hitsOnShips[4] + 1
 				if self.hitsOnShips[4] == 2:
-					self._searchAndReplace(x, y, self.hitsOnShips[4], Space.HitPTwo, Space.SunkTwo)
+					self._searchAndReplace(x, y, self.hitsOnShips[4], Space.HitPTwo, Space.SunkTwo, 1)
 			elif targetSpace == Space.HiddenSub:
 				self.reward = True
 				self.state[y][x] = Space.HitPSub
-				self.hidState[y][x] = Space.HitPSub
+				self.hidState[2][y][x] = Space.HitPSub
 				self.hitsOnShips[3] = self.hitsOnShips[3] + 1
 				if self.hitsOnShips[3] == 3:
-					self._searchAndReplace(x, y, self.hitsOnShips[3], Space.HitPSub, Space.SunkSub)
+					self._searchAndReplace(x, y, self.hitsOnShips[3], Space.HitPSub, Space.SunkSub, 2)
 			elif targetSpace == Space.HiddenCruiser:
 				self.reward = True
 				self.state[y][x] = Space.HitPCruiser
-				self.hidState[y][x] = Space.HitPCruiser
+				self.hidState[3][y][x] = Space.HitPCruiser
 				self.hitsOnShips[2] = self.hitsOnShips[2] + 1
 				if self.hitsOnShips[2] == 3:
-					self._searchAndReplace(x, y, self.hitsOnShips[2], Space.HitPCruiser, Space.SunkCruiser)
+					self._searchAndReplace(x, y, self.hitsOnShips[2], Space.HitPCruiser, Space.SunkCruiser, 3)
 			elif targetSpace == Space.HiddenFour:
 				self.reward = True
 				self.state[y][x] = Space.HitPFour
+				self.hidState[4][y][x] = Space.HitPFour
 				self.hitsOnShips[1] = self.hitsOnShips[1] + 1
 				if self.hitsOnShips[1] == 4:
-					self._searchAndReplace(x, y, self.hitsOnShips[1], Space.HitPFour, Space.SunkFour)
+					self._searchAndReplace(x, y, self.hitsOnShips[1], Space.HitPFour, Space.SunkFour, 4)
 			elif targetSpace == Space.HiddenFive:
 				self.reward = True
 				self.state[y][x] = Space.HitPFive
+				self.hidState[5][y][x] = Space.HitPFive
 				self.hitsOnShips[0] = self.hitsOnShips[0] + 1
 				if self.hitsOnShips[0] == 5:
-					self._searchAndReplace(x, y, self.hitsOnShips[0], Space.HitPFive, Space.SunkFive)
+					self._searchAndReplace(x, y, self.hitsOnShips[0], Space.HitPFive, Space.SunkFive, 5)
 			else:
 				# print("Misfire")
 				self.done = True
@@ -199,7 +200,7 @@ class Battleship1(gym.Env):
 
 	def reset(self):
 		self.state = setupShips(self.np_random)
-		self.hidState = [[Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10]
+		self.hidState = np.full(shape=(6,10,10),fill_value=Space.Empty)
 		
 		self.hitsOnShips = [0, 0, 0, 0, 0]
 
@@ -224,3 +225,8 @@ class Battleship1(gym.Env):
 	def seed(self, seed=None):
 		self.np_random, seed = utils.seeding.np_random()
 		return [seed]
+
+env = Battleship1()
+for i in range(20):
+	env.step(i)
+print(env.hidState)
