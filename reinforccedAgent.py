@@ -3,6 +3,8 @@ import tensorflow as tf
 from tf_agents.networks import network
 from tf_agents.environments import tf_py_environment
 from tf_agents.policies import q_policy
+from tf_agents.metrics import tf_metrics
+from tf_agents.drivers import dynamic_episode_driver
 
 from battleship2_env import Battleship2
 
@@ -33,12 +35,14 @@ class QNetwork(network.Network):
 my_q_network = QNetwork(input_tensor_spec=tf_env.observation_spec(),action_spec=action_spec)
 my_q_policy = q_policy.QPolicy(tf_env.time_step_spec(), action_spec, q_network=my_q_network)
 
-res = tf_env.reset()
-action_step = my_q_policy.action(res)
-distribution_step = my_q_policy.distribution(res)
+num_episodes = tf_metrics.NumberOfEpisodes()
+env_steps = tf_metrics.EnvironmentSteps()
+observers = [num_episodes, env_steps]
 
-print('Action:')
-print(action_step.action)
+driver = dynamic_episode_driver.DynamicEpisodeDriver( # switch from episode to step
+    tf_env, my_q_policy, observers, num_episodes=2)
 
-print('Action distribution:')
-print(distribution_step.action)
+final_time_step, policy_state = driver.run()
+print('final_time_step', final_time_step)
+print('Number of Steps: ', env_steps.result().numpy())
+print('Number of Episodes: ', num_episodes.result().numpy())
