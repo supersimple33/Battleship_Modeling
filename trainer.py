@@ -4,11 +4,13 @@
 # print(time / 10000)
 import faulthandler
 import multiprocessing
-logger = open('log.txt', 'w')
-faulthandler.enable(file=logger)
+# logger = open('log.txt', 'w')
+# faulthandler.enable(file=logger)
 
 import tensorflow as tf
 from tensorflow.keras.layers import Conv2D, BatchNormalization, LeakyReLU, Add, Flatten, Dense
+print(tf.__version__)
+# tf.autograph.set_verbosity(10,alsologtostdout=True)
 
 import numpy as np
 
@@ -45,7 +47,8 @@ def residualLayerCluster(inp):
 # def softmax_cross_entropy_with_logits(y_true, y_pred):
 
 #BUILDING MODEL
-reg = tf.keras.regularizers.L2(l2=0.0001)
+# reg = tf.keras.regularizers.L2(l2=0.0001)
+reg = None # see if no reg helps 
 def buildModel():
 	inputLay = tf.keras.Input(shape=(10,10,6))#12
 
@@ -77,6 +80,7 @@ accuracy = tf.keras.metrics.CategoricalAccuracy()
 gameLength = tf.keras.metrics.Mean()
 model.compile(optimizer=optim,loss=lossFunc,loss_weights=[0.5],metrics=[error,accuracy])
 print(model.summary())
+model.load_weights('saved_model/checkpoints/cp')
 
 # Globals
 ct = time.time()
@@ -162,6 +166,7 @@ for epoch in range(0,NUM_GAMES):
 			EPSILON -= 0.01
 		else:
 			EPSILON /= 1.75
+		model.save_weights('saved_model/checkpoints/cp')
 		ct = time.time()
 		# x = tf.function(makeMove)
 
