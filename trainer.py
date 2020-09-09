@@ -27,8 +27,8 @@ print(tf.__version__)
 # MODEL TWEAKS
 NUM_GAMES = 21000
 FILTERS = 64 # 64 because its cool
-EPSILON = 0.9 # Epsilon must start close to one or model training will scew incredibelly
-LEARNING_RATE = 0.002
+EPSILON = 0.7 # Epsilon must start close to one or model training will scew incredibelly
+LEARNING_RATE = 0.0001
 MOMENTUM = 0.9
 CHANNEL_TYPE = "channels_last"
 
@@ -44,7 +44,7 @@ def residualLayerCluster(inp):
 	m = Add()([inp,m])
 	return LeakyReLU()(m)
 
-@tf.function
+# @tf.function
 def customLoss(y_true, y_pred):
 	crossEnt = tf.nn.sigmoid_cross_entropy_with_logits(labels=y_true,logits=y_pred)
 	return tf.reduce_mean(crossEnt)
@@ -63,7 +63,7 @@ def buildModel():
 
 	m = residualLayerCluster(m)
 	m = residualLayerCluster(m)
-	# m = residualLayerCluster(m) # removed on cluster for added simplicity
+	# m = residualLayerCluster(m) # removed on cluster for added simplricity
 
 	m = Conv2D(filters=6,kernel_size=(1,1),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=CHANNEL_TYPE)(m) #12
 	m = BatchNormalization(axis=1)(m)
@@ -77,15 +77,16 @@ def buildModel():
 model = buildModel()
 # model = tf.keras.models.load_model('saved_model/my_model',compile=False)
 
-lossFunc = tf.keras.losses.MeanSquaredLogarithmicError()
-optim = tf.keras.optimizers.SGD(lr=LEARNING_RATE, momentum = MOMENTUM)
+lossFunc = tf.keras.losses.CategoricalCrossentropy()
+optim = tf.keras.optimizers.SGD(lr=LEARNING_RATE, momentum = MOMENTUM) # optim = tf.keras.optimizers.SGD(lr=LEARNING_RATE, momentum = MOMENTUM)
 error = tf.keras.metrics.MeanAbsoluteError()
+lossAvg = tf.keras.metrics.Mean()
 # error = tf.keras.metrics.Mean()
 accuracy = tf.keras.metrics.CategoricalAccuracy()
 gameLength = tf.keras.metrics.Mean()
-model.compile(optimizer=optim,loss=customLoss,loss_weights=[0.5],metrics=[error,accuracy])
+model.compile(optimizer=optim,loss=customLoss,metrics=[error,accuracy])
 print(model.summary())
-model.load_weights('saved_model/checkpoints/cp')
+# model.load_weights('saved_model/checkpoints/cp')
 
 # Globals
 ct = time.time()
@@ -104,19 +105,23 @@ def makeMove(obs,e):
 	logits = model.predict_step(obs)
 	return tf.argmax(logits, 1)[0]
 
-@tf.function
+# @tf.function
 def trainGrads(feature,expect):
 	with tf.GradientTape() as tape:
 		# predictions = self.model(features)
-		predictions = model.predict_step(feature)
-		loss = customLoss(expect, predictions)
+		predictions = model(feature,training=True)
+		# loss = customLoss(expect, predictions[0])
+		loss = lossFunc(expect, predictions[0])
 	gradients = tape.gradient(loss, model.trainable_variables)
 	optim.apply_gradients(zip(gradients, model.trainable_variables))
+	error.update_state(expect, predictions[0])
+	lossAvg.update_state(loss)
 	return loss
 
 # def singleStepConv():
 hits = 0
 iterartions = 0
+# sess = tf.Session()
 for epoch in range(0,NUM_GAMES):
 	prevObs = env.reset()
 	prevObs = [[[x.value[0] for x in y] for y in c] for c in prevObs] # redo timeit with numpy
@@ -142,12 +147,12 @@ for epoch in range(0,NUM_GAMES):
 		# 	out[move].assign(1.)
 		# 	observations.append(prevObs[0])
 		# 	expecteds.append(out)
-		elif done:
-			observations.append(prevObs[0])
-			expecteds.append(tf.cast(tf.convert_to_tensor(out),dtype=tf.dtypes.float32))
+		# elif done:
+		# 	observations.append(prevObs[0])
+		# 	expecteds.append(tf.cast(tf.convert_to_tensor(out),dtype=tf.dtypes.float32))
 
-		# observations.append(prevObs[0])
-		# expecteds.append(tf.cast(tf.convert_to_tensor(out),dtype=tf.dtypes.float32))
+		observations.append(prevObs[0])
+		expecteds.append(tf.cast(tf.convert_to_tensor(out),dtype=tf.dtypes.float32))
 
 		prevObs = tf.convert_to_tensor([obs])
 		prevObs = tf.reshape(tf.transpose(tf.convert_to_tensor(prevObs)),shape=(1,10,10,6))
@@ -155,16 +160,20 @@ for epoch in range(0,NUM_GAMES):
 		if done:
 			gameLength.update_state(env.counter)
 	
-	observations = tf.stack(observations)
-	expecteds = tf.stack(expecteds)
+	# observations = tf.stack(observations)
+	# expecteds = tf.stack(expecteds)
+
+	for i in range(len(observations)):
+		trainGrads(tf.reshape(observations[i],shape=(1,10,10,6)),expecteds[i])
 	
-	model.train_on_batch(x=observations,y=expecteds,reset_metrics=False)
+	# model.train_on_batch(x=observations,y=expecteds,reset_metrics=False)
 
 	if (epoch+1) % (NUM_GAMES // 30) == 0:
-		print(f"Completed {epoch+1} epochs at {round(EPSILON,7)} in {round(time.time() - ct, 3)}s. E={round(float(error.result().numpy()),6)} A={round(float(accuracy.result().numpy()),6)} H={round(hits / iterartions,6)} L={round(float(gameLength.result().numpy()),3)}")
+		print(f"Completed {epoch+1} epochs at {round(EPSILON,7)} in {round(time.time() - ct, 3)}s. L={round(float(lossAvg.result().numpy()),6)} E={round(float(error.result().numpy()),6)} A={round(float(accuracy.result().numpy()),6)} H={round(hits / iterartions,6)} I={round(float(gameLength.result().numpy()),3)}")
 		error.reset_states()
 		accuracy.reset_states()
 		gameLength.reset_states()
+		lossAvg.reset_states()
 		hits = 0
 		iterartions = 0
 		if EPSILON > 0.06:
