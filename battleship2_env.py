@@ -1,5 +1,4 @@
 from tf_agents.environments import py_environment
-from tf_agents.environments import tf_py_environment
 from tf_agents.specs import array_spec
 from tf_agents.trajectories import time_step as ts
 from tf_agents.environments import utils
@@ -230,7 +229,3 @@ class Battleship2(py_environment.PyEnvironment):
 			i += 1
 			ret = str(i) + " "
 		print()
-
-environment = Battleship2()
-tf_env = tf_py_environment.TFPyEnvironment(environment)
-utils.validate_py_environment(environment, episodes=200)
