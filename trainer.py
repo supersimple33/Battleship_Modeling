@@ -44,6 +44,11 @@ def residualLayerCluster(inp):
 	m = Add()([inp,m])
 	return LeakyReLU()(m)
 
+@tf.function
+def customLoss(y_true, y_pred):
+	crossEnt = tf.nn.sigmoid_cross_entropy_with_logits(labels=y_true,logits=y_pred)
+	return tf.reduce_mean(crossEnt)
+
 # def softmax_cross_entropy_with_logits(y_true, y_pred):
 
 #BUILDING MODEL
@@ -65,7 +70,7 @@ def buildModel():
 	m = LeakyReLU()(m)
 
 	m = Flatten()(m)
-	m = Dense(100,activation='softmax')(m)
+	m = Dense(100,activation='sigmoid')(m)
 
 	return tf.keras.Model(inputs=inputLay, outputs=m)
 
@@ -78,7 +83,7 @@ error = tf.keras.metrics.MeanAbsoluteError()
 # error = tf.keras.metrics.Mean()
 accuracy = tf.keras.metrics.CategoricalAccuracy()
 gameLength = tf.keras.metrics.Mean()
-model.compile(optimizer=optim,loss=lossFunc,loss_weights=[0.5],metrics=[error,accuracy])
+model.compile(optimizer=optim,loss=customLoss,loss_weights=[0.5],metrics=[error,accuracy])
 print(model.summary())
 model.load_weights('saved_model/checkpoints/cp')
 
@@ -104,7 +109,7 @@ def trainGrads(feature,expect):
 	with tf.GradientTape() as tape:
 		# predictions = self.model(features)
 		predictions = model.predict_step(feature)
-		loss = lossFunc(expect, predictions)
+		loss = customLoss(expect, predictions)
 	gradients = tape.gradient(loss, model.trainable_variables)
 	optim.apply_gradients(zip(gradients, model.trainable_variables))
 	return loss
@@ -126,23 +131,23 @@ for epoch in range(0,NUM_GAMES):
 		# Could Accelerate this, however few tf methods, and a couple of outside methods
 		move = makeMove(prevObs,EPSILON).numpy()
 		# print(move.numpy())
-		obs, reward, done = env.step(move)
-		obs = [[[x.value[0] for x in y] for y in c] for c in obs]
+		obs, reward, done, out = env.step(move)
+		obs = [[[x.value[0] for x in y] for y in c] for c in obs] # numpy may be faster
+		out = [t.value[0] for t in out]
 
-		out = tf.Variable(tf.zeros([100]))
-		# out = np.zeros(100)
+		# out = tf.Variable(tf.zeros([100]))
+
 		if reward:
 			hits += 1
-			out[move].assign(1.)
-			# print(out)
-			observations.append(prevObs[0])
-			expecteds.append(out)
+		# 	out[move].assign(1.)
+		# 	observations.append(prevObs[0])
+		# 	expecteds.append(out)
 		elif done:
 			observations.append(prevObs[0])
-			expecteds.append(out)
+			expecteds.append(tf.cast(tf.convert_to_tensor(out),dtype=tf.dtypes.float32))
 
 		# observations.append(prevObs[0])
-		# expecteds.append(out)
+		# expecteds.append(tf.cast(tf.convert_to_tensor(out),dtype=tf.dtypes.float32))
 
 		prevObs = tf.convert_to_tensor([obs])
 		prevObs = tf.reshape(tf.transpose(tf.convert_to_tensor(prevObs)),shape=(1,10,10,6))
