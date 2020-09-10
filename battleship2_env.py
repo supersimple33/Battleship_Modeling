@@ -143,7 +143,7 @@ class Battleship2(py_environment.PyEnvironment):
 		# hit = False
 
 		if self._episode_ended == True:
-			print("Game Over")
+			# print("Game Over")
 			return self.reset()
 		else:
 			if targetSpace == Space.Empty:
@@ -193,12 +193,12 @@ class Battleship2(py_environment.PyEnvironment):
 				# print("Misfire")
 				self._episode_ended = True
 				hitCheck = False
-				return ts.termination(self.hidState, reward=0) # change misfire reward
+				return ts.termination(self.hidState, reward=-84) # change misfire reward
 			self._counter += 1
 		win = self.hitsOnShips == [5,4,3,3,2]
 		if win:
 			self._episode_ended = True
-			print("Game over: ", self._counter, " moves.", sep = "", end = "\n")
+			# print("Game over: ", self._counter, " moves.", sep = "", end = "\n")
 			hitCheck = 100 - self._counter
 		if self._episode_ended:
 			return ts.termination(self.hidState, reward=16-self._counter)

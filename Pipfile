@@ -10,6 +10,7 @@ gym = "*"
 
 [dev-packages]
 gym_battleship1 = {path = ".", editable = true}
+rope = "*"
 
 [requires]
 python_version = "3.8"
