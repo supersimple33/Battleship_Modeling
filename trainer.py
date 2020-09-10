@@ -76,7 +76,7 @@ def buildModel():
 	return tf.keras.Model(inputs=inputLay, outputs=m)
 
 model = buildModel()
-# model = tf.keras.models.load_model('saved_model/my_model',compile=False)
+model = tf.keras.models.load_model('saved_model/my_model',compile=False)
 
 lossFunc = tf.keras.losses.CategoricalCrossentropy()
 optim = tf.keras.optimizers.SGD(lr=LEARNING_RATE, momentum = MOMENTUM) # optim = tf.keras.optimizers.SGD(lr=LEARNING_RATE, momentum = MOMENTUM)
@@ -86,6 +86,7 @@ lossAvg = tf.keras.metrics.Mean()
 accuracy = tf.keras.metrics.CategoricalAccuracy()
 gameLength = tf.keras.metrics.Mean()
 model.compile(optimizer=optim,loss=lossFunc,metrics=[error,accuracy])
+summary_writer = tf.summary.create_file_writer('logs')
 print(model.summary())
 # model.load_weights('saved_model/checkpoints/cp')
 
@@ -106,7 +107,7 @@ def makeMove(obs,e):
 	logits = model.predict_step(obs)
 	return tf.argmax(logits, 1)[0]
 
-# @tf.function
+@tf.function
 def trainGrads(feature,expect):
 	with tf.GradientTape() as tape:
 		# predictions = self.model(features)
@@ -171,6 +172,12 @@ for epoch in range(0,NUM_GAMES):
 	lossAvg.update_state(ret['loss'])
 
 	if (epoch+1) % (NUM_GAMES // 30) == 0:
+		with summary_writer.as_default():
+			tf.summary.scalar('Loss', lossAvg.result(), step=epoch+1)
+			tf.summary.scalar('Error', error.result(), step=epoch+1)
+			tf.summary.scalar('Accuracy', error.result()*100, step=epoch+1)
+			tf.summary.scalar('Hits', 100*hits / iterartions, step=epoch+1)
+			tf.summary.scalar('Game Length', error.result(), step=epoch+1)
 		print(f"Completed {epoch+1} epochs at {round(EPSILON,7)} in {round(time.time() - ct, 3)}s. L={round(float(lossAvg.result().numpy()),6)} E={round(float(error.result().numpy()),6)} A={round(float(accuracy.result().numpy()),6)} H={round(hits / iterartions,6)} I={round(float(gameLength.result().numpy()),3)}")
 		error.reset_states()
 		accuracy.reset_states()
