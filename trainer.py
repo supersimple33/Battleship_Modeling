@@ -175,9 +175,9 @@ for epoch in range(0,NUM_GAMES):
 		with summary_writer.as_default():
 			tf.summary.scalar('Loss', lossAvg.result(), step=epoch+1)
 			tf.summary.scalar('Error', error.result(), step=epoch+1)
-			tf.summary.scalar('Accuracy', error.result()*100, step=epoch+1)
+			tf.summary.scalar('Accuracy', accuracy.result()*100, step=epoch+1)
 			tf.summary.scalar('Hits', 100*hits / iterartions, step=epoch+1)
-			tf.summary.scalar('Game Length', error.result(), step=epoch+1)
+			tf.summary.scalar('Game Length', gameLength.result(), step=epoch+1)
 		print(f"Completed {epoch+1} epochs at {round(EPSILON,7)} in {round(time.time() - ct, 3)}s. L={round(float(lossAvg.result().numpy()),6)} E={round(float(error.result().numpy()),6)} A={round(float(accuracy.result().numpy()),6)} H={round(hits / iterartions,6)} I={round(float(gameLength.result().numpy()),3)}")
 		error.reset_states()
 		accuracy.reset_states()
