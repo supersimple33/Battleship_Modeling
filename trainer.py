@@ -30,8 +30,8 @@ print(tf.__version__)
 NUM_GAMES = 21000
 FILTERS = 64 # 64 because its cool
 EPSILON = 0.0 # Epsilon must start close to one or model training will scew incredibelly
-LEARNING_RATE = 0.0001
-MOMENTUM = 0.3
+LEARNING_RATE = 0.1
+MOMENTUM = 0.9
 CHANNEL_TYPE = "channels_last"
 
 def convLayerCluster(inp):

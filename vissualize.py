@@ -10,8 +10,7 @@ tensorflow.keras.losses.custom_loss = tf.nn.sigmoid_cross_entropy_with_logits
 env = gym.make('battleship1-v1')
 env.reset()
 
-trained_model = tf.keras.models.load_model('saved_model/my_model',compile=False)
-trained_model.load_weights('saved_model/checkpoints/cp')
+trained_model = tf.keras.models.load_model('saved_model/itrs',compile=False)
 
 scores = []
 choices = []
