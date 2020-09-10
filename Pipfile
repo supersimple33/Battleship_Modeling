@@ -7,6 +7,7 @@ verify_ssl = true
 numpy = "*"
 tensorflow = "*"
 gym = "*"
+tf-agents = "*"
 
 [dev-packages]
 gym_battleship1 = {path = ".", editable = true}

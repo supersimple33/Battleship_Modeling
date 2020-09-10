@@ -25,11 +25,11 @@ import time
 print(tf.__version__)
 
 # MODEL TWEAKS
-NUM_GAMES = 21000
+NUM_GAMES = 2100
 FILTERS = 64 # 64 because its cool
 EPSILON = 0.7 # Epsilon must start close to one or model training will scew incredibelly
-LEARNING_RATE = 0.0001
-MOMENTUM = 0.9
+LEARNING_RATE = 0.001
+MOMENTUM = 0.1
 CHANNEL_TYPE = "channels_last"
 
 def convLayerCluster(inp):
@@ -58,6 +58,7 @@ def buildModel():
 	inputLay = tf.keras.Input(shape=(10,10,6))#12
 
 	m = Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=CHANNEL_TYPE)(inputLay)
+	# m = Conv2D(64,3,data_format=CHANNEL_TYPE)(inputLay)
 	m = BatchNormalization(axis=-1)(m)
 	m = LeakyReLU()(m)
 
@@ -70,7 +71,7 @@ def buildModel():
 	m = LeakyReLU()(m)
 
 	m = Flatten()(m)
-	m = Dense(100,activation='sigmoid')(m)
+	m = Dense(100)(m) #activation='sigmoid'
 
 	return tf.keras.Model(inputs=inputLay, outputs=m)
 
@@ -84,7 +85,7 @@ lossAvg = tf.keras.metrics.Mean()
 # error = tf.keras.metrics.Mean()
 accuracy = tf.keras.metrics.CategoricalAccuracy()
 gameLength = tf.keras.metrics.Mean()
-model.compile(optimizer=optim,loss=customLoss,metrics=[error,accuracy])
+model.compile(optimizer=optim,loss=lossFunc,metrics=[error,accuracy])
 print(model.summary())
 # model.load_weights('saved_model/checkpoints/cp')
 
@@ -105,16 +106,17 @@ def makeMove(obs,e):
 	logits = model.predict_step(obs)
 	return tf.argmax(logits, 1)[0]
 
-@tf.function
+# @tf.function
 def trainGrads(feature,expect):
 	with tf.GradientTape() as tape:
 		# predictions = self.model(features)
-		predictions = model(feature,training=True)
-		# loss = customLoss(expect, predictions[0])
-		loss = lossFunc(expect, predictions[0])
+		logits = model(feature,training=True)
+		loss = customLoss(expect, logits[0])
+		# loss = lossFunc(expect, predictions[0])
 	gradients = tape.gradient(loss, model.trainable_variables)
 	optim.apply_gradients(zip(gradients, model.trainable_variables))
-	error.update_state(expect, predictions[0])
+	error.update_state(expect, logits[0])
+	accuracy.update_state(expect, logits)
 	lossAvg.update_state(loss)
 	return loss
 
@@ -159,14 +161,14 @@ for epoch in range(0,NUM_GAMES):
 		iterartions += 1
 		if done:
 			gameLength.update_state(env.counter)
-	
-	observations = tf.stack(observations)
-	expecteds = tf.stack(expecteds)
 
 	# for i in range(len(observations)):
 	# 	trainGrads(tf.reshape(observations[i],shape=(1,10,10,6)),expecteds[i])
 	
-	model.train_on_batch(x=observations,y=expecteds,reset_metrics=False)
+	observations = tf.stack(observations)
+	expecteds = tf.stack(expecteds)
+	ret = model.train_on_batch(x=observations,y=expecteds,reset_metrics=False,return_dict=True)
+	lossAvg.update_state(ret['loss'])
 
 	if (epoch+1) % (NUM_GAMES // 30) == 0:
 		print(f"Completed {epoch+1} epochs at {round(EPSILON,7)} in {round(time.time() - ct, 3)}s. L={round(float(lossAvg.result().numpy()),6)} E={round(float(error.result().numpy()),6)} A={round(float(accuracy.result().numpy()),6)} H={round(hits / iterartions,6)} I={round(float(gameLength.result().numpy()),3)}")
@@ -180,7 +182,7 @@ for epoch in range(0,NUM_GAMES):
 			EPSILON -= 0.01
 		else:
 			EPSILON /= 1.75
-		model.save_weights('saved_model/checkpoints/cp')
+		# model.save_weights('saved_model/checkpoints/cp')
 		ct = time.time()
 		# x = tf.function(makeMove)
 
