@@ -34,13 +34,13 @@ CHANNEL_TYPE = "channels_last"
 
 def convLayerCluster(inp):
 	m = Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=CHANNEL_TYPE)(inp)
-	m = BatchNormalization(axis=1)(m)
+	m = BatchNormalization(axis=-1)(m)
 	return LeakyReLU()(m)
 
 def residualLayerCluster(inp):
 	m = convLayerCluster(inp)
 	m = Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=CHANNEL_TYPE)(m)
-	m = BatchNormalization(axis=1)(m)
+	m = BatchNormalization(axis=-1)(m)
 	m = Add()([inp,m])
 	return LeakyReLU()(m)
 
@@ -58,7 +58,7 @@ def buildModel():
 	inputLay = tf.keras.Input(shape=(10,10,6))#12
 
 	m = Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=CHANNEL_TYPE)(inputLay)
-	m = BatchNormalization(axis=1)(m)
+	m = BatchNormalization(axis=-1)(m)
 	m = LeakyReLU()(m)
 
 	m = residualLayerCluster(m)
@@ -66,7 +66,7 @@ def buildModel():
 	# m = residualLayerCluster(m) # removed on cluster for added simplricity
 
 	m = Conv2D(filters=6,kernel_size=(1,1),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=CHANNEL_TYPE)(m) #12
-	m = BatchNormalization(axis=1)(m)
+	m = BatchNormalization(axis=-1)(m)
 	m = LeakyReLU()(m)
 
 	m = Flatten()(m)
@@ -105,7 +105,7 @@ def makeMove(obs,e):
 	logits = model.predict_step(obs)
 	return tf.argmax(logits, 1)[0]
 
-# @tf.function
+@tf.function
 def trainGrads(feature,expect):
 	with tf.GradientTape() as tape:
 		# predictions = self.model(features)
@@ -160,13 +160,13 @@ for epoch in range(0,NUM_GAMES):
 		if done:
 			gameLength.update_state(env.counter)
 	
-	# observations = tf.stack(observations)
-	# expecteds = tf.stack(expecteds)
+	observations = tf.stack(observations)
+	expecteds = tf.stack(expecteds)
 
-	for i in range(len(observations)):
-		trainGrads(tf.reshape(observations[i],shape=(1,10,10,6)),expecteds[i])
+	# for i in range(len(observations)):
+	# 	trainGrads(tf.reshape(observations[i],shape=(1,10,10,6)),expecteds[i])
 	
-	# model.train_on_batch(x=observations,y=expecteds,reset_metrics=False)
+	model.train_on_batch(x=observations,y=expecteds,reset_metrics=False)
 
 	if (epoch+1) % (NUM_GAMES // 30) == 0:
 		print(f"Completed {epoch+1} epochs at {round(EPSILON,7)} in {round(time.time() - ct, 3)}s. L={round(float(lossAvg.result().numpy()),6)} E={round(float(error.result().numpy()),6)} A={round(float(accuracy.result().numpy()),6)} H={round(hits / iterartions,6)} I={round(float(gameLength.result().numpy()),3)}")
