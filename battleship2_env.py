@@ -87,7 +87,7 @@ class Battleship2(py_environment.PyEnvironment):
 
 	def __init__(self):
 		self._action_spec = array_spec.BoundedArraySpec(shape=(), dtype=np.int32, minimum=0, maximum=99, name='action')
-		self._observation_spec = array_spec.BoundedArraySpec(shape=(6,10,10), dtype=np.int32, minimum=0, maximum=2, name='observation')
+		self._observation_spec = array_spec.BoundedArraySpec(shape=(10,10,6), dtype=np.int32, minimum=0, maximum=2, name='observation')
 		# self.seed()
 
 		self.reset()
@@ -193,18 +193,19 @@ class Battleship2(py_environment.PyEnvironment):
 				# print("Misfire")
 				self._episode_ended = True
 				hitCheck = False
-				return ts.termination(self.hidState, reward=-84) # change misfire reward
+				return ts.termination(np.transpose(self.hidState), reward=-1.0) # change misfire reward
 			self._counter += 1
 		win = self.hitsOnShips == [5,4,3,3,2]
 		if win:
 			self._episode_ended = True
 			# print("Game over: ", self._counter, " moves.", sep = "", end = "\n")
-			hitCheck = 100 - self._counter
+			# hitCheck = 100 - self._counter
+		rew = 0.0 if hitCheck else -1.0
 		if self._episode_ended:
-			return ts.termination(self.hidState, reward=16-self._counter)
+			return ts.termination(np.transpose(self.hidState), reward=rew)
 		else:
-			return ts.transition(self.hidState, reward=0.0, discount=1.0)
-		return [self.hidState, hitCheck, self._episode_ended, self.expectedShots]
+			return ts.transition(np.transpose(self.hidState), reward=rew, discount=1.0)
+		# return [self.hidState, hitCheck, self._episode_ended, self.expectedShots]
 
 	def _reset(self):
 		self._state = setupShips()
@@ -216,7 +217,7 @@ class Battleship2(py_environment.PyEnvironment):
 		self._counter = 0
 		self._episode_ended = False
 		# self.add = [0, 0]
-		return ts.restart(self.hidState)
+		return ts.restart(np.transpose(self.hidState))
 	
 	def _render(self, mode='human', close=False):
 		ret = "0 "

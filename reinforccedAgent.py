@@ -24,6 +24,11 @@ tf_env = tf_py_environment.TFPyEnvironment(environment)
 action_spec = tf_env.action_spec()
 num_actions = action_spec.maximum - action_spec.minimum + 1
 
+# MODEL TWEAKS
+FILTERS = 64
+REG = None
+CHANNEL_TYPE = "channels_last"
+
 class QNetwork(network.Network):
 	def __init__(self, input_tensor_spec, action_spec, num_actions=num_actions, name=None):
 		super(QNetwork, self).__init__(
@@ -31,6 +36,12 @@ class QNetwork(network.Network):
 			state_spec=(),
 			name=name)
 		self._sub_layers = [
+			tf.keras.layers.Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=REG,data_format=CHANNEL_TYPE),
+			tf.keras.layers.BatchNormalization(axis=-1),
+			tf.keras.layers.LeakyReLU(),
+			# tf.keras.layers.Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=REG,data_format=CHANNEL_TYPE),
+			# tf.keras.layers.BatchNormalization(axis=1),
+			# tf.keras.layers.LeakyReLU(),
 			tf.keras.layers.Flatten(),
 			tf.keras.layers.Dense(num_actions,activation='sigmoid'), #tweak later
 		]
@@ -45,6 +56,8 @@ class QNetwork(network.Network):
 timSpec = tf_env.time_step_spec()
 obsSpec = tf_env.observation_spec()
 q_net = QNetwork(input_tensor_spec=obsSpec,action_spec=action_spec)
+q_net.create_variables(obsSpec, training=True)
+print(q_net.summary())
 q_policy = q_policy.QPolicy(timSpec, action_spec, q_network=q_net)
 global_step = tf.compat.v1.train.get_or_create_global_step()
 
@@ -79,14 +92,14 @@ final_time_step, policy_state = driver.run()
 # Decorated Function
 agent.train = common.function(agent.train)#move
 
-dataset = replay_buffer.as_dataset(sample_batch_size=1,num_steps=2,single_deterministic_pass=True) # do I want single_deterministic sample_batch_size=1,
-iterator = iter(dataset)
-for _ in range(replay_buffer.num_frames()//2):
-	trajectories, _ = next(iterator)
-	loss = agent.train(experience=trajectories)
-	lossAvg.update_state(loss[0])
-# print(loss[0].numpy())
-replay_buffer.clear()
+# dataset = replay_buffer.as_dataset(sample_batch_size=1,num_steps=2,single_deterministic_pass=True) # do I want single_deterministic sample_batch_size=1,
+# iterator = iter(dataset)
+# for _ in range(replay_buffer.num_frames()//2):
+# 	trajectories, _ = next(iterator)
+# 	loss = agent.train(experience=trajectories)
+# 	lossAvg.update_state(loss[0])
+# # print(loss[0].numpy())
+# replay_buffer.clear()
 
 for epoch in range(NUM_GAMES):
 	final_time_step, policy_state = driver.run(final_time_step, policy_state)
