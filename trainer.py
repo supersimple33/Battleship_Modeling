@@ -8,8 +8,10 @@ import multiprocessing
 # faulthandler.enable(file=logger)
 
 import tensorflow as tf
-from tensorflow.keras.layers import Conv2D, BatchNormalization, LeakyReLU, Add, Flatten, Dense
+from tensorflow.keras.layers import Conv2D, BatchNormalization, LeakyReLU, Add, Flatten, Dense, Concatenate
 print(tf.__version__)
+
+import tensorflow.keras.backend as K
 # tf.autograph.set_verbosity(10,alsologtostdout=True)
 
 import numpy as np
@@ -25,11 +27,11 @@ import time
 print(tf.__version__)
 
 # MODEL TWEAKS
-NUM_GAMES = 2100
+NUM_GAMES = 21000
 FILTERS = 64 # 64 because its cool
-EPSILON = 0.7 # Epsilon must start close to one or model training will scew incredibelly
-LEARNING_RATE = 0.001
-MOMENTUM = 0.1
+EPSILON = 0.0 # Epsilon must start close to one or model training will scew incredibelly
+LEARNING_RATE = 0.0001
+MOMENTUM = 0.3
 CHANNEL_TYPE = "channels_last"
 
 def convLayerCluster(inp):
@@ -63,7 +65,7 @@ def buildModel():
 	m = LeakyReLU()(m)
 
 	m = residualLayerCluster(m)
-	m = residualLayerCluster(m)
+	# m = residualLayerCluster(m)
 	# m = residualLayerCluster(m) # removed on cluster for added simplricity
 
 	m = Conv2D(filters=6,kernel_size=(1,1),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=CHANNEL_TYPE)(m) #12
@@ -71,21 +73,23 @@ def buildModel():
 	m = LeakyReLU()(m)
 
 	m = Flatten()(m)
-	m = Dense(100)(m) #activation='sigmoid'
+	og = Flatten()(inputLay)
+	r = Concatenate(axis=1)([m,og])
+	out = Dense(100)(r) #activation='sigmoid'
 
-	return tf.keras.Model(inputs=inputLay, outputs=m)
+	return tf.keras.Model(inputs=inputLay, outputs=out)
 
 model = buildModel()
-model = tf.keras.models.load_model('saved_model/my_model',compile=False)
+# model = tf.keras.models.load_model('saved_model/my_model',compile=False)
 
-lossFunc = tf.keras.losses.CategoricalCrossentropy()
+lossFunc = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
 optim = tf.keras.optimizers.SGD(lr=LEARNING_RATE, momentum = MOMENTUM) # optim = tf.keras.optimizers.SGD(lr=LEARNING_RATE, momentum = MOMENTUM)
 error = tf.keras.metrics.MeanAbsoluteError()
 lossAvg = tf.keras.metrics.Mean()
 # error = tf.keras.metrics.Mean()
 accuracy = tf.keras.metrics.CategoricalAccuracy()
 gameLength = tf.keras.metrics.Mean()
-model.compile(optimizer=optim,loss=lossFunc,metrics=[error,accuracy])
+model.compile(optimizer=optim,loss=customLoss,metrics=[error,accuracy])
 summary_writer = tf.summary.create_file_writer('logs')
 print(model.summary())
 # model.load_weights('saved_model/checkpoints/cp')
@@ -186,7 +190,7 @@ for epoch in range(0,NUM_GAMES):
 		hits = 0
 		iterartions = 0
 		if EPSILON > 0.06:
-			EPSILON -= 0.01
+			EPSILON -= 0.03
 		else:
 			EPSILON /= 1.75
 		# model.save_weights('saved_model/checkpoints/cp')
