@@ -8,7 +8,7 @@ import multiprocessing
 # faulthandler.enable(file=logger)
 
 import tensorflow as tf
-from tensorflow.keras.layers import Conv2D, BatchNormalization, LeakyReLU, Add, Flatten, Dense, Concatenate
+from tensorflow.keras.layers import InputLayer, Conv2D, BatchNormalization, LeakyReLU, Add, Flatten, Dense, Concatenate
 print(tf.__version__)
 
 import tensorflow.keras.backend as K
@@ -27,11 +27,11 @@ import time
 print(tf.__version__)
 
 # MODEL TWEAKS
-NUM_GAMES = 21000
+NUM_GAMES = 2100
 FILTERS = 64 # 64 because its cool
 EPSILON = 0.0 # Epsilon must start close to one or model training will scew incredibelly
-LEARNING_RATE = 0.1
-MOMENTUM = 0.9
+LEARNING_RATE = 0.01
+MOMENTUM = 0.0
 CHANNEL_TYPE = "channels_last"
 
 def convLayerCluster(inp):
@@ -56,7 +56,7 @@ def customLoss(y_true, y_pred):
 #BUILDING MODEL
 # reg = tf.keras.regularizers.L2(l2=0.0001)
 reg = None # see if no reg helps 
-def buildModel():
+def oldbuildModel():
 	inputLay = tf.keras.Input(shape=(10,10,6))#12
 
 	m = Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=CHANNEL_TYPE)(inputLay)
@@ -77,6 +77,15 @@ def buildModel():
 	r = Concatenate(axis=1)([m,og])
 	out = Dense(100)(r) #activation='sigmoid'
 
+	return tf.keras.Model(inputs=inputLay, outputs=out)
+
+def buildModel():
+	inputLay = tf.keras.Input(shape=(10,10,6))
+	f = Flatten()(inputLay)
+	# a = tf.keras.layers.Activation("sigmoid")(f)
+	# d1 = Dense(400, "relu")(a)
+	# d2 = Dense(50, "relu")(d1)
+	out = Dense(100)(f)
 	return tf.keras.Model(inputs=inputLay, outputs=out)
 
 model = buildModel()
@@ -123,7 +132,7 @@ def trainGrads(feature,expect):
 	error.update_state(expect, logits[0])
 	accuracy.update_state(expect, logits)
 	lossAvg.update_state(loss)
-	return loss
+	return gradients
 
 # def singleStepConv():
 hits = 0
@@ -139,6 +148,7 @@ for epoch in range(0,NUM_GAMES):
 	expecteds = []
 	done = False
 
+	slotsLeft = np.ones(shape=100)
 	while not done:
 		# Could Accelerate this, however few tf methods, and a couple of outside methods
 		move = makeMove(prevObs,EPSILON).numpy()
@@ -159,7 +169,9 @@ for epoch in range(0,NUM_GAMES):
 		# 	expecteds.append(tf.cast(tf.convert_to_tensor(out),dtype=tf.dtypes.float32))
 
 		observations.append(prevObs[0])
-		expecteds.append(tf.cast(tf.convert_to_tensor(out),dtype=tf.dtypes.float32))
+		expecteds.append(tf.convert_to_tensor(slotsLeft))
+		slotsLeft[move] = 0
+		# expecteds.append(tf.cast(tf.convert_to_tensor(out),dtype=tf.dtypes.float32))
 
 		prevObs = tf.convert_to_tensor([obs])
 		prevObs = tf.reshape(tf.transpose(tf.convert_to_tensor(prevObs)),shape=(1,10,10,6))
@@ -167,13 +179,14 @@ for epoch in range(0,NUM_GAMES):
 		if done:
 			gameLength.update_state(env.counter)
 
-	# for i in range(len(observations)):
-	# 	trainGrads(tf.reshape(observations[i],shape=(1,10,10,6)),expecteds[i])
+	for i in range(len(observations)): # FOR DEBUGGING #
+		ret = trainGrads(tf.reshape(observations[i],shape=(1,10,10,6)),expecteds[i])
+		pass
 	
-	observations = tf.stack(observations)
-	expecteds = tf.stack(expecteds)
-	ret = model.train_on_batch(x=observations,y=expecteds,reset_metrics=False,return_dict=True)
-	lossAvg.update_state(ret['loss'])
+	# observations = tf.stack(observations)
+	# expecteds = tf.stack(expecteds)
+	# ret = model.train_on_batch(x=observations,y=expecteds,reset_metrics=False,return_dict=True)
+	# lossAvg.update_state(ret['loss'])
 
 	if (epoch+1) % (NUM_GAMES // 30) == 0:
 		with summary_writer.as_default():
