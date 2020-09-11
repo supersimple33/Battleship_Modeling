@@ -1,5 +1,7 @@
-import gym
-from gym import error, spaces, utils
+from tf_agents.environments import py_environment
+from tf_agents.specs import array_spec
+from tf_agents.trajectories import time_step as ts
+from tf_agents.environments import utils
 
 import enum
 import numpy as np
@@ -58,7 +60,7 @@ def addShip(state, ship, len_, x, y, d):
 				state[y][x - j] = ship
 		return True
 
-def setupShips(np_random):
+def setupShips():
 		i = 0
 		# state = [[Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10]
 		state = np.full(shape=(10,10),fill_value=Space.Empty)
@@ -67,9 +69,9 @@ def setupShips(np_random):
 			# s = np_random.choice(shipIds)
 			len_ = [5, 4, 3, 3, 2][i]#s
 			ship = [Space.HiddenFive, Space.HiddenFour, Space.HiddenCruiser, Space.HiddenSub, Space.HiddenTwo][i]#s
-			x = np_random.randint(0,9)
-			y = np_random.randint(0,9)
-			d = np_random.randint(0,3)
+			x = np.random.randint(0,9)
+			y = np.random.randint(0,9)
+			d = np.random.randint(0,3)
 			
 			if ((d % 2 == 1) and ((x - len_ < -1) or (x + len_) > 10)) or ((d % 2 == 0) and ((y - len_ < -1) or (y + len_) > 10)):
 				continue
@@ -80,41 +82,38 @@ def setupShips(np_random):
 		return state
 
 #game code
-class Battleship1(gym.Env):
+class Battleship2(py_environment.PyEnvironment):
 	metadata = {'render.modes': ['human']}
 
 	def __init__(self):
-		self.action_space = spaces.Discrete(100)
-		missesChannel = spaces.Tuple([
-    		spaces.MultiDiscrete([2, 2, 2, 2, 2, 2, 2, 2, 2, 2]) for _ in range(10)
-		])
-		regChannel = spaces.Tuple([
-    		spaces.MultiDiscrete([3, 3, 3, 3, 3, 3, 3, 3, 3, 3]) for _ in range(10)
-		])
-		self.observation_space = spaces.Tuple((missesChannel,regChannel,regChannel,regChannel,regChannel,regChannel))
-		self.seed()
+		self._action_spec = array_spec.BoundedArraySpec(shape=(), dtype=np.int32, minimum=0, maximum=99, name='action')
+		self._observation_spec = array_spec.BoundedArraySpec(shape=(10,10,6), dtype=np.int32, minimum=0, maximum=2, name='observation')
+		# self.seed()
 
 		self.reset()
 
-		# Action and observations spaces
+	def action_spec(self): # Unused methods?
+		return self._action_spec
+	def observation_spec(self):
+		return self._observation_spec
 
 	def _searchAndReplace(self, x, y, len_, search, replace,c):
-		self.state[y][x] = replace
+		self._state[y][x] = replace
 		direc = (-1,1)
 		for d in direc:
 			if (y+d) > 9 or (y+d) < 0:
 				continue
 			if len_ == 0:
 				continue
-			if self.state[y + d][x] == search:
-				self.state[y + d][x] = replace
-				self.hidState[c][y + d][x] = replace
+			if self._state[y + d][x] == search:
+				self._state[y + d][x] = replace
+				self.hidState[c][y + d][x] = replace.value[0]
 				len_ -= 1
 				for eLow in range(1,len_):
 					e = eLow + 1
-					if self.state[y + (d * e)][x] == search:
-						self.state[y + (d * e)][x] = replace
-						self.hidState[c][y + (d * e)][x] = replace
+					if self._state[y + (d * e)][x] == search:
+						self._state[y + (d * e)][x] = replace
+						self.hidState[c][y + (d * e)][x] = replace.value[0]
 						len_ -= 1
 					else:
 						break
@@ -123,111 +122,111 @@ class Battleship1(gym.Env):
 				continue
 			if len_ == 0:
 				continue
-			if self.state[y][x + d] == search:
-				self.state[y][x + d] = replace
-				self.hidState[c][y][x + d] = replace
+			if self._state[y][x + d] == search:
+				self._state[y][x + d] = replace
+				self.hidState[c][y][x + d] = replace.value[0]
 				len_ -= 1
 				for eLow in range(1,len_):
 					e = eLow + 1
-					if self.state[y][x + (d*e)] == search:
-						self.state[y][x + (d*e)] = replace
-						self.hidState[c][y][x + (d*e)] = replace
+					if self._state[y][x + (d*e)] == search:
+						self._state[y][x + (d*e)] = replace
+						self.hidState[c][y][x + (d*e)] = replace.value[0]
 						len_ -= 1
 					else:
 						break
 
-	def step(self, target):
+	def _step(self, target):
 		x = target % 10
 		y = target // 10
-		targetSpace = self.state[y][x]
-		self.reward = False
+		targetSpace = self._state[y][x]
+		hitCheck = False
 		# hit = False
 
-		if self.done == True:
-			print("Game Over")
-			return [self.hidState, self.reward, self.done, self.expectedShots] #check return
+		if self._episode_ended == True:
+			# print("Game Over")
+			return self.reset()
 		else:
 			if targetSpace == Space.Empty:
-				self.state[y][x] = Space.Miss
-				self.hidState[0][y][x] = Space.Miss
+				self._state[y][x] = Space.Miss
+				self.hidState[0][y][x] = Space.Miss.value[0]
 			elif targetSpace == Space.HiddenTwo:
-				self.reward = True
+				hitCheck = True
 				self.expectedShots[target] = Space.Empty
-				self.state[y][x] = Space.HitPTwo
-				self.hidState[1][y][x] = Space.HitPTwo
+				self._state[y][x] = Space.HitPTwo
+				self.hidState[1][y][x] = Space.HitPTwo.value[0]
 				self.hitsOnShips[4] = self.hitsOnShips[4] + 1
 				if self.hitsOnShips[4] == 2:
 					self._searchAndReplace(x, y, self.hitsOnShips[4], Space.HitPTwo, Space.SunkTwo, 1)
 			elif targetSpace == Space.HiddenSub:
-				self.reward = True
+				hitCheck = True
 				self.expectedShots[target] = Space.Empty
-				self.state[y][x] = Space.HitPSub
-				self.hidState[2][y][x] = Space.HitPSub
+				self._state[y][x] = Space.HitPSub
+				self.hidState[2][y][x] = Space.HitPSub.value[0]
 				self.hitsOnShips[3] = self.hitsOnShips[3] + 1
 				if self.hitsOnShips[3] == 3:
 					self._searchAndReplace(x, y, self.hitsOnShips[3], Space.HitPSub, Space.SunkSub, 2)
 			elif targetSpace == Space.HiddenCruiser:
-				self.reward = True
+				hitCheck = True
 				self.expectedShots[target] = Space.Empty
-				self.state[y][x] = Space.HitPCruiser
-				self.hidState[3][y][x] = Space.HitPCruiser
+				self._state[y][x] = Space.HitPCruiser
+				self.hidState[3][y][x] = Space.HitPCruiser.value[0]
 				self.hitsOnShips[2] = self.hitsOnShips[2] + 1
 				if self.hitsOnShips[2] == 3:
 					self._searchAndReplace(x, y, self.hitsOnShips[2], Space.HitPCruiser, Space.SunkCruiser, 3)
 			elif targetSpace == Space.HiddenFour:
-				self.reward = True
+				hitCheck = True
 				self.expectedShots[target] = Space.Empty
-				self.state[y][x] = Space.HitPFour
-				self.hidState[4][y][x] = Space.HitPFour
+				self._state[y][x] = Space.HitPFour
+				self.hidState[4][y][x] = Space.HitPFour.value[0]
 				self.hitsOnShips[1] = self.hitsOnShips[1] + 1
 				if self.hitsOnShips[1] == 4:
 					self._searchAndReplace(x, y, self.hitsOnShips[1], Space.HitPFour, Space.SunkFour, 4)
 			elif targetSpace == Space.HiddenFive:
-				self.reward = True
+				hitCheck = True
 				self.expectedShots[target] = Space.Empty
-				self.state[y][x] = Space.HitPFive
-				self.hidState[5][y][x] = Space.HitPFive
+				self._state[y][x] = Space.HitPFive
+				self.hidState[5][y][x] = Space.HitPFive.value[0]
 				self.hitsOnShips[0] = self.hitsOnShips[0] + 1
 				if self.hitsOnShips[0] == 5:
 					self._searchAndReplace(x, y, self.hitsOnShips[0], Space.HitPFive, Space.SunkFive, 5)
 			else:
 				# print("Misfire")
-				self.done = True
-				self.reward = False
-				return [self.hidState, self.reward, self.done, self.expectedShots]
-			self.counter += 1
+				self._episode_ended = True
+				hitCheck = False
+				return ts.termination(np.transpose(self.hidState), reward=-1.0) # change misfire reward
+			self._counter += 1
 		win = self.hitsOnShips == [5,4,3,3,2]
 		if win:
-			self.done = True
-			print("Game over: ", self.counter, " moves.", sep = "", end = "\n")
-			self.reward = 100 - self.counter
-		return [self.hidState, self.reward, self.done, self.expectedShots]
+			self._episode_ended = True
+			# print("Game over: ", self._counter, " moves.", sep = "", end = "\n")
+			# hitCheck = 100 - self._counter
+		rew = 0.0 if hitCheck else -1.0
+		if self._episode_ended:
+			return ts.termination(np.transpose(self.hidState), reward=rew)
+		else:
+			return ts.transition(np.transpose(self.hidState), reward=rew, discount=1.0)
+		# return [self.hidState, hitCheck, self._episode_ended, self.expectedShots]
 
-	def reset(self):
-		self.state = setupShips(self.np_random)
-		self.hidState = np.full(shape=(6,10,10),fill_value=Space.Empty)
-		self.expectedShots = np.reshape(self.state, (100))
+	def _reset(self):
+		self._state = setupShips()
+		self.hidState = np.full(shape=(6,10,10),fill_value=0,dtype=np.int32)
+		self.expectedShots = np.reshape(self._state, (100))
 		
 		self.hitsOnShips = [0, 0, 0, 0, 0]
 
-		self.counter = 0
-		self.done = False
+		self._counter = 0
+		self._episode_ended = False
 		# self.add = [0, 0]
-		self.reward = None
-		return self.hidState
+		return ts.restart(np.transpose(self.hidState))
 	
-	def render(self, mode='human', close=False):
+	def _render(self, mode='human', close=False):
 		ret = "0 "
 		print("   0   1   2   3   4   5   6   7   8   9 ")
 		i =  0
-		for row in self.state:
+		for row in self._state:
 			for slot in row:
 				ret += slot.value[1] + " "
 			print(ret)
 			i += 1
 			ret = str(i) + " "
 		print()
-
-	def seed(self, seed=None):
-		self.np_random, seed = utils.seeding.np_random()
-		return [seed]

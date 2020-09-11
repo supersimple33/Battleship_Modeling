@@ -19,7 +19,7 @@ intial_games = 50000
 def playRandomGameFirst():
 	for step_index in range(goal_steps):
 		action = randomSpace()
-		observation, reward, done, successStep = env.step(action)
+		observation, reward, done = env.step(action)
 		print("Step {}:".format(step_index))
 		print("action: {}".format(action))
 		# print("observation: {}".format(observation))
@@ -45,11 +45,9 @@ def modelDataPrep():
 		previous_observation = [0]*100
 		for step_index in range(goal_steps):
 			action = randomSpace()
-			observation, reward, done, succ, hit = env.step(action)
-			if not succ:
-				continue
+			observation, reward, done = env.step(action)
 			
-			if hit:
+			if reward:
 				ops = [0]*100
 				ops[action] = 1
 				trainingData.append([previous_observation, ops])
