@@ -36,13 +36,14 @@ class QNetwork(network.Network):
 			state_spec=(),
 			name=name)
 		self._sub_layers = [
-			tf.keras.layers.Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=REG,data_format=CHANNEL_TYPE),
-			tf.keras.layers.BatchNormalization(axis=-1),
-			tf.keras.layers.LeakyReLU(),
+			# tf.keras.layers.Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=REG,data_format=CHANNEL_TYPE),
+			# tf.keras.layers.BatchNormalization(axis=-1),
+			# tf.keras.layers.LeakyReLU(),
 			# tf.keras.layers.Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=REG,data_format=CHANNEL_TYPE),
 			# tf.keras.layers.BatchNormalization(axis=1),
 			# tf.keras.layers.LeakyReLU(),
 			tf.keras.layers.Flatten(),
+			tf.keras.layers.Dense(150),
 			tf.keras.layers.Dense(num_actions,activation='sigmoid'), #tweak later
 		]
 
@@ -61,11 +62,11 @@ print(q_net.summary())
 q_policy = q_policy.QPolicy(timSpec, action_spec, q_network=q_net)
 global_step = tf.compat.v1.train.get_or_create_global_step()
 
-
+# AGENT DEF
 agent = dqn_agent.DqnAgent(
     timSpec,
     action_spec,
-	n_step_update=1, # safe?
+	n_step_update=4, # safe?
     q_network=q_net,
     optimizer=tf.keras.optimizers.Adam(0.001),
 	train_step_counter=global_step) #tf.compat.v1.train.AdamOptimizer(0.001)
@@ -73,7 +74,8 @@ agent = dqn_agent.DqnAgent(
 # BUFFER TWEAKS
 batch_size = 32
 MAX_LENGTH = 1000
-NUM_GAMES = 100
+NUM_GAMES = 15
+EPOCHS = 100
 
 data_spec = (action_spec,obsSpec)
 replay_buffer = tf_uniform_replay_buffer.TFUniformReplayBuffer(agent.collect_data_spec,batch_size=tf_env.batch_size,max_length=MAX_LENGTH)
@@ -82,7 +84,7 @@ env_steps = tf_metrics.EnvironmentSteps()
 lossAvg = tf.keras.metrics.Mean()
 observers = [num_episodes, env_steps, replay_buffer.add_batch]
 
-driver = dynamic_episode_driver.DynamicEpisodeDriver(tf_env, q_policy, observers, num_episodes=1) # switch from episode to step
+driver = dynamic_episode_driver.DynamicEpisodeDriver(tf_env, q_policy, observers, num_episodes=NUM_GAMES) # switch from episode to step
 
 final_time_step, policy_state = driver.run()
 # print('final_time_step', final_time_step)
@@ -101,20 +103,21 @@ agent.train = common.function(agent.train)#move
 # # print(loss[0].numpy())
 # replay_buffer.clear()
 
-for epoch in range(NUM_GAMES):
+for epoch in range(EPOCHS):
 	final_time_step, policy_state = driver.run(final_time_step, policy_state)
 
-	dataset = replay_buffer.as_dataset(sample_batch_size=1,num_steps=2,single_deterministic_pass=True) # do I want single_deterministic sample_batch_size=1,
+	# dataset = replay_buffer.as_dataset(sample_batch_size=1,num_steps=2,single_deterministic_pass=True) # do I want single_deterministic sample_batch_size=1,
+	dataset = replay_buffer.as_dataset(sample_batch_size=5,num_steps=5,single_deterministic_pass=True) # do I want single_deterministic sample_batch_size=1,
 	iterator = iter(dataset)
-	for _ in range(replay_buffer.num_frames()//2):
-		trajectories, _ = next(iterator)
+	for comp in iterator:
+		trajectories, _ = comp
 		loss = agent.train(experience=trajectories)
 		lossAvg.update_state(loss[0])
 	# print(loss[0].numpy())
 	replay_buffer.clear()
 
 	if (epoch+1) % (NUM_GAMES//10) == 0:
-		print(f"done A {lossAvg.result().numpy()}, {env_steps.result().numpy() / (NUM_GAMES//10)}")
+		print(f"done A {lossAvg.result().numpy()}, {env_steps.result().numpy() / num_episodes.result().numpy()}")
 		lossAvg.reset_states()
 		env_steps.reset()
 

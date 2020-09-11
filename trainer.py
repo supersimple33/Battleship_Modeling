@@ -8,7 +8,7 @@ import multiprocessing
 # faulthandler.enable(file=logger)
 
 import tensorflow as tf
-from tensorflow.keras.layers import InputLayer, Conv2D, BatchNormalization, LeakyReLU, Add, Flatten, Dense, Concatenate
+from tensorflow.keras.layers import InputLayer, Conv2D, BatchNormalization, LeakyReLU, Add, Flatten, Dense, Concatenate, Dot, Reshape
 print(tf.__version__)
 
 import tensorflow.keras.backend as K
@@ -80,12 +80,16 @@ def oldbuildModel():
 	return tf.keras.Model(inputs=inputLay, outputs=out)
 
 def buildModel():
-	inputLay = tf.keras.Input(shape=(10,10,6))
-	f = Flatten()(inputLay)
-	a = tf.keras.layers.Activation("sigmoid")(f)
-	# d1 = Dense(400, "relu")(a)
-	# d2 = Dense(50, "relu")(d1)
-	out = Dense(100)(a)
+	inputLay = tf.keras.Input(shape=(6,10,10))
+	c1 = Conv2D(1, (1, 1), data_format="channels_first")(inputLay)
+	c2 = Conv2D(1, (1, 1), data_format="channels_first")(inputLay)
+	f1 = Reshape((1,100))(c1)
+	f2 = Reshape((1,100))(c2)
+	d = Dot(axes=1)([f1,f2])
+	f3 = Flatten(data_format="channels_first")(d)
+	# inputLay = InputLayer(input_shape=(10,10,6))
+	# out = Conv2D
+	out = Dense(100)(f3) #INCLUDE
 	return tf.keras.Model(inputs=inputLay, outputs=out)
 
 model = buildModel()
