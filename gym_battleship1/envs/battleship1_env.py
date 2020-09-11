@@ -7,7 +7,7 @@ import numpy as np
 
 # indList = ("|-|","!M!","(2)","(S)","(C)","(4)","(5)",3"x2x","xSx","xCx","x4x","x5x","|2|","|S|","|C|","|4|","|5|","HiddenCruiser")
 class Space(enum.Enum):
-	Empty = 0,"|-|" #_
+	Empty = -1,"|-|" #_
 
 	Miss = 1,"!M!" #m
 	
