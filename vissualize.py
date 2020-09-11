@@ -17,7 +17,7 @@ choices = []
 
 for each_game in range(1):
 	score = 0
-	prev_obs = env.reset()
+	prev_obs, _ = env.reset()
 	prev_obs = [[[x.value[0] for x in y] for y in c] for c in prev_obs] # redo timeit with numpy
 	prev_obs = tf.reshape(tf.transpose(tf.convert_to_tensor(prev_obs)),shape=(1,10,10,6)) # ONLY NEEDED FOR CPUS
 
@@ -41,6 +41,7 @@ for each_game in range(1):
 
 		choices.append(action)
 		new_observation, reward, done, _ = env.step(action)
+		print(reward)
 
 		prev_obs = new_observation
 		prev_obs = [[[x.value[0] for x in y] for y in c] for c in prev_obs] # redo timeit with numpy

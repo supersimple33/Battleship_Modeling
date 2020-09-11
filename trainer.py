@@ -32,17 +32,18 @@ FILTERS = 64 # 64 because its cool
 EPSILON = 0.0 # Epsilon must start close to one or model training will scew incredibelly
 LEARNING_RATE = 0.001
 MOMENTUM = 0.1
-CHANNEL_TYPE = "channels_first"
+CHANNEL_TYPE = "channels_last"
+AXIS = 1 if CHANNEL_TYPE == "channels_first" else -1
 
 def convLayerCluster(inp):
 	m = Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=CHANNEL_TYPE)(inp)
-	m = BatchNormalization(axis=1)(m)
+	m = BatchNormalization(axis=AXIS)(m)
 	return LeakyReLU()(m)
 
 def residualLayerCluster(inp):
 	m = convLayerCluster(inp)
 	m = Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=CHANNEL_TYPE)(m)
-	m = BatchNormalization(axis=1)(m)
+	m = BatchNormalization(axis=AXIS)(m)
 	m = Add()([inp,m])
 	return LeakyReLU()(m)
 
@@ -57,11 +58,11 @@ def customLoss(y_true, y_pred):
 # reg = tf.keras.regularizers.L2(l2=0.0001)
 reg = None # see if no reg helps 
 def buildModel():
-	inputLay = tf.keras.Input(shape=(6,10,10))#12
+	inputLay = tf.keras.Input(shape=(10,10,6))#12
 
 	m = Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=CHANNEL_TYPE)(inputLay)
 	# m = Conv2D(64,3,data_format=CHANNEL_TYPE)(inputLay)
-	m = BatchNormalization(axis=1)(m) #-1 for channels last
+	m = BatchNormalization(axis=AXIS)(m) #-1 for channels last
 	m = LeakyReLU()(m)
 
 	m = residualLayerCluster(m)
@@ -69,13 +70,13 @@ def buildModel():
 	# m = residualLayerCluster(m) # removed on cluster for added simplricity
 
 	m = Conv2D(filters=6,kernel_size=(1,1),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=CHANNEL_TYPE)(m) #12
-	m = BatchNormalization(axis=1)(m)
+	m = BatchNormalization(axis=AXIS)(m)
 	m = LeakyReLU()(m)
 
 	m = Flatten()(m)
-	og = Flatten()(inputLay)
-	r = Concatenate(axis=1)([m,og])
-	out = Dense(100)(r) #activation='sigmoid'
+	# og = Flatten()(inputLay)
+	# r = Concatenate(axis=1)([m,og])
+	out = Dense(100)(m) #activation='sigmoid'
 
 	return tf.keras.Model(inputs=inputLay, outputs=out)
 
@@ -143,11 +144,11 @@ hits = 0
 iterartions = 0
 # sess = tf.Session()
 for epoch in range(0,NUM_GAMES):
-	prevObs = env.reset()
+	prevObs, prevOut = env.reset()
+	prevOut = np.copy(prevOut)
+	prevObs = np.moveaxis(prevObs,0,-1) # CPU ONLY
 	prevObs = [[[x.value[0] for x in y] for y in c] for c in prevObs] # redo timeit with numpy
-	# prevObs = tf.reshape(tf.transpose(tf.convert_to_tensor(prevObs)),shape=(1,10,10,6)) # ONLY NEEDED FOR CPUS
 	prevObs = tf.convert_to_tensor([prevObs])
-	# prevObs = tf.reshape(prevObs, (1,10,10,6))
 
 	observations = [] # could also use deque
 	expecteds = []
@@ -160,12 +161,12 @@ for epoch in range(0,NUM_GAMES):
 		# print(move.numpy())
 		obs, reward, done, out = env.step(move)
 		obs = [[[x.value[0] for x in y] for y in c] for c in obs] # numpy may be faster
-		out = [t.value[0] for t in out]
 
 		# out = tf.Variable(tf.zeros([100]))
 
 		if reward:
 			hits += 1
+		prevOut = [t.value[0] for t in prevOut] # look at the last input
 		# 	out[move].assign(1.)
 		# 	observations.append(prevObs[0])
 		# 	expecteds.append(out)
@@ -174,12 +175,13 @@ for epoch in range(0,NUM_GAMES):
 		# 	expecteds.append(tf.cast(tf.convert_to_tensor(out),dtype=tf.dtypes.float32))
 
 		observations.append(prevObs[0])
-		expecteds.append(tf.convert_to_tensor(slotsLeft))
-		slotsLeft[move] = 0
-		# expecteds.append(tf.cast(tf.convert_to_tensor(out),dtype=tf.dtypes.float32))
+		# expecteds.append(tf.convert_to_tensor(slotsLeft))
+		# slotsLeft[move] = 0
+		expecteds.append(tf.cast(tf.convert_to_tensor(prevOut),dtype=tf.dtypes.float32))
 
+		obs = np.moveaxis(obs,0,-1) # CPU ONLY
 		prevObs = tf.convert_to_tensor([obs])
-		# prevObs = tf.reshape(tf.transpose(tf.convert_to_tensor(prevObs)),shape=(1,10,10,6))
+		prevOut = np.copy(out)
 		iterartions += 1
 		if done:
 			gameLength.update_state(env.counter)

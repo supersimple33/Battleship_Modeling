@@ -7,7 +7,7 @@ import numpy as np
 
 # indList = ("|-|","!M!","(2)","(S)","(C)","(4)","(5)",3"x2x","xSx","xCx","x4x","x5x","|2|","|S|","|C|","|4|","|5|","HiddenCruiser")
 class Space(enum.Enum):
-	Empty = -1,"|-|" #_
+	Empty = 0,"|-|" #_
 
 	Miss = 1,"!M!" #m
 	
@@ -17,11 +17,11 @@ class Space(enum.Enum):
 	HitPFour = 1,"(4)"
 	HitPFive = 1,"(5)"
 
-	SunkTwo = 2,"x2x"
-	SunkSub = 2,"xSx"
-	SunkCruiser = 2,"xCx"
-	SunkFour = 2,"x4x"
-	SunkFive = 2,"x5x"
+	SunkTwo = -1,"x2x"
+	SunkSub = -1,"xSx"
+	SunkCruiser = -1,"xCx"
+	SunkFour = -1,"x4x"
+	SunkFive = -1,"x5x"
 
 	HiddenTwo = 1,"|2|" # Need to update these values likely 1
 	HiddenSub = 1,"|S|"
@@ -206,7 +206,7 @@ class Battleship1(gym.Env):
 	def reset(self):
 		self.state = setupShips(self.np_random)
 		self.hidState = np.full(shape=(6,10,10),fill_value=Space.Empty)
-		self.expectedShots = np.reshape(self.state, (100))
+		self.expectedShots = np.copy(np.reshape(self.state, (100)))
 		
 		self.hitsOnShips = [0, 0, 0, 0, 0]
 
@@ -214,7 +214,7 @@ class Battleship1(gym.Env):
 		self.done = False
 		# self.add = [0, 0]
 		self.reward = None
-		return self.hidState
+		return self.hidState, self.expectedShots
 	
 	def render(self, mode='human', close=False):
 		ret = "0 "
@@ -231,3 +231,7 @@ class Battleship1(gym.Env):
 	def seed(self, seed=None):
 		self.np_random, seed = utils.seeding.np_random()
 		return [seed]
+
+# e = Battleship1()
+# e.reset()
+# e.render()
