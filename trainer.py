@@ -27,11 +27,11 @@ import time
 print(tf.__version__)
 
 # MODEL TWEAKS
-NUM_GAMES = 2100
+NUM_GAMES = 5100
 FILTERS = 64 # 64 because its cool
 EPSILON = 0.0 # Epsilon must start close to one or model training will scew incredibelly
-LEARNING_RATE = 0.01
-MOMENTUM = 0.0
+LEARNING_RATE = 0.001
+MOMENTUM = 0.1
 CHANNEL_TYPE = "channels_last"
 
 def convLayerCluster(inp):
@@ -82,16 +82,16 @@ def oldbuildModel():
 def buildModel():
 	inputLay = tf.keras.Input(shape=(10,10,6))
 	f = Flatten()(inputLay)
-	# a = tf.keras.layers.Activation("sigmoid")(f)
+	a = tf.keras.layers.Activation("sigmoid")(f)
 	# d1 = Dense(400, "relu")(a)
 	# d2 = Dense(50, "relu")(d1)
-	out = Dense(100)(f)
+	out = Dense(100)(a)
 	return tf.keras.Model(inputs=inputLay, outputs=out)
 
 model = buildModel()
 # model = tf.keras.models.load_model('saved_model/my_model',compile=False)
 
-lossFunc = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
+# lossFunc = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
 optim = tf.keras.optimizers.SGD(lr=LEARNING_RATE, momentum = MOMENTUM) # optim = tf.keras.optimizers.SGD(lr=LEARNING_RATE, momentum = MOMENTUM)
 error = tf.keras.metrics.MeanAbsoluteError()
 lossAvg = tf.keras.metrics.Mean()
@@ -148,7 +148,7 @@ for epoch in range(0,NUM_GAMES):
 	expecteds = []
 	done = False
 
-	slotsLeft = np.ones(shape=100)
+	slotsLeft = np.ones(shape=100,dtype=np.float32)
 	while not done:
 		# Could Accelerate this, however few tf methods, and a couple of outside methods
 		move = makeMove(prevObs,EPSILON).numpy()
@@ -179,14 +179,16 @@ for epoch in range(0,NUM_GAMES):
 		if done:
 			gameLength.update_state(env.counter)
 
-	for i in range(len(observations)): # FOR DEBUGGING #
-		ret = trainGrads(tf.reshape(observations[i],shape=(1,10,10,6)),expecteds[i])
-		pass
+	# TRAINING
+
+	# for i in range(len(observations)): # FOR DEBUGGING #
+	# 	ret = trainGrads(tf.reshape(observations[i],shape=(1,10,10,6)),expecteds[i])
+	# 	pass
 	
-	# observations = tf.stack(observations)
-	# expecteds = tf.stack(expecteds)
-	# ret = model.train_on_batch(x=observations,y=expecteds,reset_metrics=False,return_dict=True)
-	# lossAvg.update_state(ret['loss'])
+	observations = tf.stack(observations)
+	expecteds = tf.stack(expecteds)
+	ret = model.train_on_batch(x=observations,y=expecteds,reset_metrics=False,return_dict=True)
+	lossAvg.update_state(ret['loss'])
 
 	if (epoch+1) % (NUM_GAMES // 30) == 0:
 		with summary_writer.as_default():
