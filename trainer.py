@@ -32,17 +32,17 @@ FILTERS = 64 # 64 because its cool
 EPSILON = 0.0 # Epsilon must start close to one or model training will scew incredibelly
 LEARNING_RATE = 0.001
 MOMENTUM = 0.1
-CHANNEL_TYPE = "channels_last"
+CHANNEL_TYPE = "channels_first"
 
 def convLayerCluster(inp):
 	m = Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=CHANNEL_TYPE)(inp)
-	m = BatchNormalization(axis=-1)(m)
+	m = BatchNormalization(axis=1)(m)
 	return LeakyReLU()(m)
 
 def residualLayerCluster(inp):
 	m = convLayerCluster(inp)
 	m = Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=CHANNEL_TYPE)(m)
-	m = BatchNormalization(axis=-1)(m)
+	m = BatchNormalization(axis=1)(m)
 	m = Add()([inp,m])
 	return LeakyReLU()(m)
 
@@ -56,20 +56,20 @@ def customLoss(y_true, y_pred):
 #BUILDING MODEL
 # reg = tf.keras.regularizers.L2(l2=0.0001)
 reg = None # see if no reg helps 
-def oldbuildModel():
-	inputLay = tf.keras.Input(shape=(10,10,6))#12
+def buildModel():
+	inputLay = tf.keras.Input(shape=(6,10,10))#12
 
 	m = Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=CHANNEL_TYPE)(inputLay)
 	# m = Conv2D(64,3,data_format=CHANNEL_TYPE)(inputLay)
-	m = BatchNormalization(axis=-1)(m)
+	m = BatchNormalization(axis=1)(m) #-1 for channels last
 	m = LeakyReLU()(m)
 
 	m = residualLayerCluster(m)
-	# m = residualLayerCluster(m)
+	m = residualLayerCluster(m)
 	# m = residualLayerCluster(m) # removed on cluster for added simplricity
 
 	m = Conv2D(filters=6,kernel_size=(1,1),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=CHANNEL_TYPE)(m) #12
-	m = BatchNormalization(axis=-1)(m)
+	m = BatchNormalization(axis=1)(m)
 	m = LeakyReLU()(m)
 
 	m = Flatten()(m)
@@ -79,7 +79,7 @@ def oldbuildModel():
 
 	return tf.keras.Model(inputs=inputLay, outputs=out)
 
-def buildModel():
+def oldBuildModel():
 	inputLay = tf.keras.Input(shape=(6,10,10))
 	c1 = Conv2D(1, (1, 1), data_format="channels_first")(inputLay)
 	c2 = Conv2D(1, (1, 1), data_format="channels_first")(inputLay)
@@ -145,7 +145,8 @@ iterartions = 0
 for epoch in range(0,NUM_GAMES):
 	prevObs = env.reset()
 	prevObs = [[[x.value[0] for x in y] for y in c] for c in prevObs] # redo timeit with numpy
-	prevObs = tf.reshape(tf.transpose(tf.convert_to_tensor(prevObs)),shape=(1,10,10,6)) # ONLY NEEDED FOR CPUS
+	# prevObs = tf.reshape(tf.transpose(tf.convert_to_tensor(prevObs)),shape=(1,10,10,6)) # ONLY NEEDED FOR CPUS
+	prevObs = tf.convert_to_tensor([prevObs])
 	# prevObs = tf.reshape(prevObs, (1,10,10,6))
 
 	observations = [] # could also use deque
@@ -178,7 +179,7 @@ for epoch in range(0,NUM_GAMES):
 		# expecteds.append(tf.cast(tf.convert_to_tensor(out),dtype=tf.dtypes.float32))
 
 		prevObs = tf.convert_to_tensor([obs])
-		prevObs = tf.reshape(tf.transpose(tf.convert_to_tensor(prevObs)),shape=(1,10,10,6))
+		# prevObs = tf.reshape(tf.transpose(tf.convert_to_tensor(prevObs)),shape=(1,10,10,6))
 		iterartions += 1
 		if done:
 			gameLength.update_state(env.counter)
