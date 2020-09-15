@@ -231,7 +231,3 @@ class Battleship1(gym.Env):
 	def seed(self, seed=None):
 		self.np_random, seed = utils.seeding.np_random()
 		return [seed]
-
-# e = Battleship1()
-# e.reset()
-# e.render()

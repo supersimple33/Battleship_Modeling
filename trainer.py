@@ -145,7 +145,8 @@ iterartions = 0
 # sess = tf.Session()
 for epoch in range(0,NUM_GAMES):
 	prevObs, prevOut = env.reset()
-	prevOut = np.copy(prevOut)
+	# prevObs = np.copy(prevObs)
+	prevOut = np.copy(prevOut) # could get rid of copy in replace of tensor conversion
 	prevObs = np.moveaxis(prevObs,0,-1) # CPU ONLY
 	prevObs = [[[x.value[0] for x in y] for y in c] for c in prevObs] # redo timeit with numpy
 	prevObs = tf.convert_to_tensor([prevObs])
@@ -167,12 +168,6 @@ for epoch in range(0,NUM_GAMES):
 		if reward:
 			hits += 1
 		prevOut = [t.value[0] for t in prevOut] # look at the last input
-		# 	out[move].assign(1.)
-		# 	observations.append(prevObs[0])
-		# 	expecteds.append(out)
-		# elif done:
-		# 	observations.append(prevObs[0])
-		# 	expecteds.append(tf.cast(tf.convert_to_tensor(out),dtype=tf.dtypes.float32))
 
 		observations.append(prevObs[0])
 		# expecteds.append(tf.convert_to_tensor(slotsLeft))
