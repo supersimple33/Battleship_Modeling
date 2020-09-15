@@ -9,6 +9,7 @@ import multiprocessing
 
 import tensorflow as tf
 from tensorflow.keras.layers import InputLayer, Conv2D, BatchNormalization, LeakyReLU, Add, Flatten, Dense, Concatenate, Dot, Reshape
+import tensorflow.keras.backend as K
 print(tf.__version__)
 
 import tensorflow.keras.backend as K
@@ -29,7 +30,7 @@ print(tf.__version__)
 # MODEL TWEAKS
 NUM_GAMES = 5100
 FILTERS = 64 # 64 because its cool
-EPSILON = 0.0 # Epsilon must start close to one or model training will scew incredibelly
+EPSILON = 0.7 # Epsilon must start close to one or model training will scew incredibelly
 LEARNING_RATE = 0.001
 MOMENTUM = 0.1
 CHANNEL_TYPE = "channels_last"
@@ -47,10 +48,24 @@ def residualLayerCluster(inp):
 	m = Add()([inp,m])
 	return LeakyReLU()(m)
 
-# @tf.function
+@tf.function
 def customLoss(y_true, y_pred):
 	crossEnt = tf.nn.sigmoid_cross_entropy_with_logits(labels=y_true,logits=y_pred)
 	return tf.reduce_mean(crossEnt)
+@tf.function
+def f1_loss(y_true, y_pred):
+    
+    tp = K.sum(K.cast(y_true*y_pred, 'float'), axis=0)
+    tn = K.sum(K.cast((1-y_true)*(1-y_pred), 'float'), axis=0)
+    fp = K.sum(K.cast((1-y_true)*y_pred, 'float'), axis=0)
+    fn = K.sum(K.cast(y_true*(1-y_pred), 'float'), axis=0)
+
+    p = tp / (tp + fp + K.epsilon())
+    r = tp / (tp + fn + K.epsilon())
+
+    f1 = 2*p*r / (p+r+K.epsilon())
+    f1 = tf.where(tf.math.is_nan(f1), tf.zeros_like(f1), f1)
+    return 1 - K.mean(f1)
 
 # def softmax_cross_entropy_with_logits(y_true, y_pred):
 
@@ -66,7 +81,7 @@ def buildModel():
 	m = LeakyReLU()(m)
 
 	m = residualLayerCluster(m)
-	m = residualLayerCluster(m)
+	# m = residualLayerCluster(m)
 	# m = residualLayerCluster(m) # removed on cluster for added simplricity
 
 	m = Conv2D(filters=6,kernel_size=(1,1),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=CHANNEL_TYPE)(m) #12
@@ -76,24 +91,25 @@ def buildModel():
 	m = Flatten()(m)
 	# og = Flatten()(inputLay)
 	# r = Concatenate(axis=1)([m,og])
-	out = Dense(100)(m) #activation='sigmoid'
+	out = Dense(100,activation='sigmoid')(m) #
 
 	return tf.keras.Model(inputs=inputLay, outputs=out)
 
 def oldBuildModel():
-	inputLay = tf.keras.Input(shape=(6,10,10))
-	c1 = Conv2D(1, (1, 1), data_format="channels_first")(inputLay)
-	c2 = Conv2D(1, (1, 1), data_format="channels_first")(inputLay)
+	inputLay = tf.keras.Input(shape=(10,10,6))
+	c1 = Conv2D(1, (1, 1), data_format=CHANNEL_TYPE)(inputLay)
+	c2 = Conv2D(1, (1, 1), data_format=CHANNEL_TYPE)(inputLay)
 	f1 = Reshape((1,100))(c1)
 	f2 = Reshape((1,100))(c2)
 	d = Dot(axes=1)([f1,f2])
-	f3 = Flatten(data_format="channels_first")(d)
+	f3 = Flatten(data_format=CHANNEL_TYPE)(d)
 	# inputLay = InputLayer(input_shape=(10,10,6))
 	# out = Conv2D
-	out = Dense(100)(f3) #INCLUDE
+	out = Dense(100,activation='sigmoid')(f3) #activation='sigmoid'
 	return tf.keras.Model(inputs=inputLay, outputs=out)
 
-model = buildModel()
+# model = buildModel()
+model = oldBuildModel()
 # model = tf.keras.models.load_model('saved_model/my_model',compile=False)
 
 # lossFunc = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
@@ -103,7 +119,7 @@ lossAvg = tf.keras.metrics.Mean()
 # error = tf.keras.metrics.Mean()
 accuracy = tf.keras.metrics.CategoricalAccuracy()
 gameLength = tf.keras.metrics.Mean()
-model.compile(optimizer=optim,loss=customLoss,metrics=[error,accuracy])
+model.compile(optimizer=optim,loss=f1_loss,metrics=[error,accuracy])
 summary_writer = tf.summary.create_file_writer('logs')
 print(model.summary())
 # model.load_weights('saved_model/checkpoints/cp')
@@ -125,23 +141,26 @@ def makeMove(obs,e):
 	logits = model.predict_step(obs)
 	return tf.argmax(logits, 1)[0]
 
-@tf.function
+# @tf.function
 def trainGrads(feature,expect):
 	with tf.GradientTape() as tape:
 		# predictions = self.model(features)
-		logits = model(feature,training=True)
-		loss = customLoss(expect, logits[0])
+		preds = model(feature,training=True)
+		# loss = customLoss(expect, preds[0])
 		# loss = lossFunc(expect, predictions[0])
+		loss = f1_loss(expect, preds[0])
 	gradients = tape.gradient(loss, model.trainable_variables)
 	optim.apply_gradients(zip(gradients, model.trainable_variables))
-	error.update_state(expect, logits[0])
-	accuracy.update_state(expect, logits)
+	error.update_state(expect, preds[0])
+	accuracy.update_state(expect, preds)
 	lossAvg.update_state(loss)
 	return gradients
 
 # def singleStepConv():
 hits = 0
 iterartions = 0
+observations = []
+expecteds = []
 # sess = tf.Session()
 for epoch in range(0,NUM_GAMES):
 	prevObs, prevOut = env.reset()
@@ -151,8 +170,6 @@ for epoch in range(0,NUM_GAMES):
 	prevObs = [[[x.value[0] for x in y] for y in c] for c in prevObs] # redo timeit with numpy
 	prevObs = tf.convert_to_tensor([prevObs])
 
-	observations = [] # could also use deque
-	expecteds = []
 	done = False
 
 	slotsLeft = np.ones(shape=100,dtype=np.float32)
@@ -187,10 +204,15 @@ for epoch in range(0,NUM_GAMES):
 	# 	ret = trainGrads(tf.reshape(observations[i],shape=(1,10,10,6)),expecteds[i])
 	# 	pass
 	
-	observations = tf.stack(observations)
-	expecteds = tf.stack(expecteds)
-	ret = model.train_on_batch(x=observations,y=expecteds,reset_metrics=False,return_dict=True)
-	lossAvg.update_state(ret['loss'])
+	if len(observations) > 25:
+		observations = tf.stack(observations)
+		expecteds = tf.stack(expecteds)
+		
+		ret = model.train_on_batch(x=observations,y=expecteds,reset_metrics=False,return_dict=True)
+		lossAvg.update_state(ret['loss'])
+
+		observations = []
+		expecteds = []
 
 	if (epoch+1) % (NUM_GAMES // 30) == 0:
 		with summary_writer.as_default():
