@@ -1,1 +1,6 @@
 09/18 I'm Gonna start logging all the improvmmennts and what changes I am making and why
+Start develoment again and the model still is not grabbing on to training. 
+I have tried a number of different solutions however none have worked. A CONV network I found on medium and regular dense layers have yet to identify how to avoid previously shot at moves.
+I have also tracked down a number of memory and worked on speeding up the root of the enviroment.
+
+Going to start today by adding on fit and a way to record memories will lean toward overfitting during these first few attempts at aquiring data.
