@@ -28,7 +28,7 @@ import time
 print(tf.__version__)
 
 # MODEL TWEAKS
-NUM_GAMES = 7500
+NUM_GAMES = 60000
 FILTERS = 64 # 64 because its cool
 EPSILON = 1.0 # Epsilon must start close to one or model training will scew incredibelly
 LEARNING_RATE = 0.001
@@ -116,7 +116,8 @@ model = oldBuildModel()
 # model = tf.keras.models.load_model('saved_model/my_model',compile=False)
 
 # lossFunc = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
-optim = tf.keras.optimizers.SGD(lr=LEARNING_RATE, momentum = MOMENTUM) # optim = tf.keras.optimizers.SGD(lr=LEARNING_RATE, momentum = MOMENTUM)
+# optim = tf.keras.optimizers.SGD(lr=LEARNING_RATE, momentum = MOMENTUM) # optim = tf.keras.optimizers.SGD(lr=LEARNING_RATE, momentum = MOMENTUM)
+optim = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
 error = tf.keras.metrics.MeanAbsoluteError()
 lossAvg = tf.keras.metrics.Mean()
 # error = tf.keras.metrics.Mean()
@@ -243,8 +244,11 @@ for epoch in range(0,NUM_GAMES):
 
 observationStack = tf.stack(observations)
 expectedStack = tf.stack(expecteds)
+dataset = tf.data.Dataset.from_tensor_slices((observationStack, expectedStack))
+dataset = dataset.batch(32)
+dataset = dataset.shuffle(dataset.__len__(), reshuffle_each_iteration=True)
+tf.data.experimental.save(dataset=dataset,path='saved_data')
 with tf.device('/cpu:0'):
 	model.fit(x=observationStack,y=expectedStack,epochs=10,verbose=2,callbacks=[tensorboard_callback],use_multiprocessing=True) # multiprocessing?
-
 model.save('saved_model/my_model')
 print("Model Saved")
