@@ -135,10 +135,10 @@ def makeMove(obs,e):
 		if r < EPSILON:
 			return tf.random.uniform(shape=[],maxval=100,dtype=tf.dtypes.int64)
 		else:
-			logits = model.predict_step(obs)
-			return tf.argmax(logits, 1)[0]
-	logits = model.predict_step(obs)
-	return tf.argmax(logits, 1)[0]
+			preds = model(obs, training=False)
+			return tf.argmax(preds, 1)[0]
+	preds = model(obs, training=False)
+	return tf.argmax(preds, 1)[0]
 
 # @tf.function
 def trainGrads(feature,expect):
