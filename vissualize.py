@@ -39,9 +39,9 @@ for each_game in range(1):
 		
 		# print(action, prev_obs)
 
-		choices.append(action)
 		new_observation, reward, done, _ = env.step(action)
 		print(reward)
+		choices.append(1 if reward else 0)
 
 		prev_obs = new_observation
 		prev_obs = [[[x.value[0] for x in y] for y in c] for c in prev_obs] # redo timeit with numpy

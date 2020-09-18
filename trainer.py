@@ -8,7 +8,7 @@ import multiprocessing
 # faulthandler.enable(file=logger)
 
 import tensorflow as tf
-from tensorflow.keras.layers import InputLayer, Conv2D, BatchNormalization, LeakyReLU, Add, Flatten, Dense, Concatenate, Dot, Reshape
+from tensorflow.keras.layers import InputLayer, Conv2D, BatchNormalization, LeakyReLU, Add, Flatten, Dense, Concatenate, Dot, Reshape, Dropout
 import tensorflow.keras.backend as K
 print(tf.__version__)
 
@@ -28,11 +28,11 @@ import time
 print(tf.__version__)
 
 # MODEL TWEAKS
-NUM_GAMES = 5100
+NUM_GAMES = 15000
 FILTERS = 64 # 64 because its cool
-EPSILON = 0.7 # Epsilon must start close to one or model training will scew incredibelly
-LEARNING_RATE = 0.001
-MOMENTUM = 0.1
+EPSILON = 0.0 # Epsilon must start close to one or model training will scew incredibelly
+LEARNING_RATE = 0.05
+MOMENTUM = 0.05
 CHANNEL_TYPE = "channels_last"
 AXIS = 1 if CHANNEL_TYPE == "channels_first" else -1
 
@@ -96,21 +96,20 @@ def buildModel():
 	return tf.keras.Model(inputs=inputLay, outputs=out)
 
 def oldBuildModel():
-	inputLay = tf.keras.Input(shape=(10,10,6))
-	c1 = Conv2D(1, (1, 1), data_format=CHANNEL_TYPE)(inputLay)
-	c2 = Conv2D(1, (1, 1), data_format=CHANNEL_TYPE)(inputLay)
-	f1 = Reshape((1,100))(c1)
-	f2 = Reshape((1,100))(c2)
-	d = Dot(axes=1)([f1,f2])
-	f3 = Flatten(data_format=CHANNEL_TYPE)(d)
-	# inputLay = InputLayer(input_shape=(10,10,6))
-	# out = Conv2D
-	out = Dense(100,activation='sigmoid')(f3) #activation='sigmoid'
-	return tf.keras.Model(inputs=inputLay, outputs=out)
+	# inputLay = tf.keras.Input(shape=(10,10,6))
+	m = tf.keras.Sequential()
+	m.add(InputLayer(input_shape=(10,10,6)))
+	m.add(Flatten())
+	m.add(Dense(250,activation='relu'))
+	m.add(Dropout(.2))
+	m.add(Dense(150,activation='relu'))
+	m.add(Dropout(.2))
+	m.add(Dense(100,activation='sigmoid'))
+	return m
 
 # model = buildModel()
 model = oldBuildModel()
-# model = tf.keras.models.load_model('saved_model/my_model',compile=False)
+model = tf.keras.models.load_model('saved_model/my_model',compile=False)
 
 # lossFunc = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
 optim = tf.keras.optimizers.SGD(lr=LEARNING_RATE, momentum = MOMENTUM) # optim = tf.keras.optimizers.SGD(lr=LEARNING_RATE, momentum = MOMENTUM)
@@ -204,7 +203,7 @@ for epoch in range(0,NUM_GAMES):
 	# 	ret = trainGrads(tf.reshape(observations[i],shape=(1,10,10,6)),expecteds[i])
 	# 	pass
 	
-	if len(observations) > 25:
+	if len(observations) > 128:
 		observations = tf.stack(observations)
 		expecteds = tf.stack(expecteds)
 		
@@ -229,10 +228,10 @@ for epoch in range(0,NUM_GAMES):
 		hits = 0
 		iterartions = 0
 		if EPSILON > 0.06:
-			EPSILON -= 0.03
+			EPSILON -= 0.02
 		else:
 			EPSILON /= 1.75
-		# model.save_weights('saved_model/checkpoints/cp')
+		model.save_weights('saved_model/checkpoints/cp')
 		ct = time.time()
 		# x = tf.function(makeMove)
 
