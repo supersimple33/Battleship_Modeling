@@ -31,3 +31,21 @@ def f1_loss(y_true, y_pred):
     f1 = 2*p*r / (p+r+K.epsilon())
     f1 = tf.where(tf.math.is_nan(f1), tf.zeros_like(f1), f1)
     return 1 - K.mean(f1)
+
+def buildModel():
+    inputLay = tf.keras.Input(shape=(10,10,6))
+    f = Flatten()(inputLay)
+    d1 = Dense(150,activation='relu')(f)
+    d2 = Dense(100)(d1)
+
+    r1 = Reshape((100,6))(inputLay)
+    a = GlobalMaxPool1D('channels_first')(r1)
+    r2 = Reshape((100,1))(a)
+    lc = LocallyConnected1D(1,1)(r2)
+    f2 = Flatten()(lc)
+    # gm1 = GlobalMaxPool2D('channels_first')(inputLay)
+    # gm2 = GlobalMaxPool1D('channels_first')(gm1)
+
+    a = Add()([d2,f2])
+    out = Activation('sigmoid')(a)
+    return tf.keras.Model(inputs=inputLay, outputs=out)

@@ -12,7 +12,7 @@ from customs import customAccuracy
 env = gym.make('battleship1-v1')
 env.reset()
 
-trained_model = tf.keras.models.load_model('saved_model/my_model',compile=False,custom_objects={'customAccuracy':customAccuracy})
+trained_model = tf.keras.models.load_model('saved_model/test',compile=False,custom_objects={'customAccuracy':customAccuracy})
 
 scores = []
 choices = []
