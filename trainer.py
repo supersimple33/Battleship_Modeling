@@ -25,13 +25,15 @@ import builtins
 import time
 # from collections import deques
 
+from customs import customAccuracy
+
 print(tf.__version__)
 
 # MODEL TWEAKS
-NUM_GAMES = 30000
+NUM_GAMES = 12000
 FILTERS = 64 # 64 because its cool
-EPSILON = 1.0 # Epsilon must start close to one or model training will scew incredibelly
-LEARNING_RATE = 0.001
+EPSILON = 0.95 # Epsilon must start close to one or model training will scew incredibelly
+LEARNING_RATE = 0.01
 MOMENTUM = 0.05
 CHANNEL_TYPE = "channels_last"
 AXIS = 1 if CHANNEL_TYPE == "channels_first" else -1
@@ -47,28 +49,6 @@ def residualLayerCluster(inp):
 	m = BatchNormalization(axis=AXIS)(m)
 	m = Add()([inp,m])
 	return LeakyReLU()(m)
-
-@tf.function
-def customLoss(y_true, y_pred):
-	crossEnt = tf.nn.sigmoid_cross_entropy_with_logits(labels=y_true,logits=y_pred)
-	return tf.reduce_mean(crossEnt)
-@tf.function
-def f1_loss(y_true, y_pred):
-    
-    tp = K.sum(K.cast(y_true*y_pred, 'float'), axis=0)
-    tn = K.sum(K.cast((1-y_true)*(1-y_pred), 'float'), axis=0)
-    fp = K.sum(K.cast((1-y_true)*y_pred, 'float'), axis=0)
-    fn = K.sum(K.cast(y_true*(1-y_pred), 'float'), axis=0)
-
-    p = tp / (tp + fp + K.epsilon())
-    r = tp / (tp + fn + K.epsilon())
-
-    f1 = 2*p*r / (p+r+K.epsilon())
-    f1 = tf.where(tf.math.is_nan(f1), tf.zeros_like(f1), f1)
-    return 1 - K.mean(f1)
-
-# def softmax_cross_entropy_with_logits(y_true, y_pred):
-
 
 #BUILDING MODEL
 # reg = tf.keras.regularizers.L2(l2=0.0001)
@@ -108,7 +88,6 @@ def oldBuildModel():
 	m.add(Dense(100,activation='sigmoid'))
 	return m
 
-
 # CONFIGURING THE MODEL
 
 # model = buildModel()
@@ -121,11 +100,12 @@ optim = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
 error = tf.keras.metrics.MeanAbsoluteError()
 lossAvg = tf.keras.metrics.Mean()
 # error = tf.keras.metrics.Mean()
-accuracy = tf.keras.metrics.CategoricalAccuracy()
+# accuracy = tf.keras.metrics.CategoricalAccuracy()
+accuracy = tf.keras.metrics.Mean()
 gameLength = tf.keras.metrics.Mean()
-model.compile(optimizer=optim,loss='binary_crossentropy',metrics=[error,accuracy])
-# summary_writer = tf.summary.create_file_writer('logs')
-tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir='logs', histogram_freq=1)
+model.compile(optimizer=optim,loss='binary_crossentropy',metrics=[error,customAccuracy])
+summary_writer = tf.summary.create_file_writer('logs')
+# tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir='logs', histogram_freq=1)
 print(model.summary())
 # model.load_weights('saved_model/checkpoints/cp')
 
@@ -210,23 +190,24 @@ for epoch in range(0,NUM_GAMES):
 	# 	ret = trainGrads(tf.reshape(observations[i],shape=(1,10,10,6)),expecteds[i])
 	# 	pass
 	
-	# if len(observations) > 128:
-		# observations = tf.stack(observations)
-		# expecteds = tf.stack(expecteds)
+	if len(observations) > 32:
+		observations = tf.stack(observations)
+		expecteds = tf.stack(expecteds)
 		
-	# 	ret = model.train_on_batch(x=observations,y=expecteds,reset_metrics=False,return_dict=True)
-	# 	lossAvg.update_state(ret['loss'])
+		ret = model.train_on_batch(x=observations,y=expecteds,reset_metrics=False,return_dict=True)
+		lossAvg.update_state(ret['loss'])
+		accuracy.update_state(ret['customAccuracy'])
 
-	# 	observations = []
-	# 	expecteds = []
+		observations = []
+		expecteds = []
 
 	if (epoch+1) % (NUM_GAMES // 30) == 0:
-		# with summary_writer.as_default():
-		# 	tf.summary.scalar('Loss', lossAvg.result(), step=epoch+1)
-		# 	tf.summary.scalar('Error', error.result(), step=epoch+1)
-		# 	tf.summary.scalar('Accuracy', accuracy.result()*100, step=epoch+1)
-		# 	tf.summary.scalar('Hits', 100*hits / iterartions, step=epoch+1)
-		# 	tf.summary.scalar('Game Length', gameLength.result(), step=epoch+1)
+		with summary_writer.as_default():
+			tf.summary.scalar('Loss', lossAvg.result(), step=epoch+1)
+			tf.summary.scalar('Error', error.result(), step=epoch+1)
+			tf.summary.scalar('Accuracy', accuracy.result()*100, step=epoch+1)
+			tf.summary.scalar('Hits', 100*hits / iterartions, step=epoch+1)
+			tf.summary.scalar('Game Length', gameLength.result(), step=epoch+1)
 		print(f"Completed {epoch+1} epochs at {round(EPSILON,7)} in {round(time.time() - ct, 3)}s. L={round(float(lossAvg.result().numpy()),6)} E={round(float(error.result().numpy()),6)} A={round(float(accuracy.result().numpy()),6)} H={round(hits / iterartions,6)} I={round(float(gameLength.result().numpy()),3)}")
 		error.reset_states()
 		accuracy.reset_states()
@@ -234,21 +215,20 @@ for epoch in range(0,NUM_GAMES):
 		lossAvg.reset_states()
 		hits = 0
 		iterartions = 0
-		# if EPSILON > 0.06:
-		# 	EPSILON -= 0.02
-		# else:
-		# 	EPSILON /= 1.75
+		if EPSILON > 0.06:
+			EPSILON -= 0.02
+		else:
+			EPSILON /= 1.75
 		# model.save_weights('saved_model/checkpoints/cp')
 		ct = time.time()
-		# x = tf.function(makeMove)
 
-observationStack = tf.stack(observations)
-expectedStack = tf.stack(expecteds)
-dataset = tf.data.Dataset.from_tensor_slices((observationStack, expectedStack))
-# dataset = dataset.batch(32)
-# dataset = dataset.shuffle(dataset.__len__(), reshuffle_each_iteration=True)
-tf.data.experimental.save(dataset=dataset,path='saved_data')
-with tf.device('/cpu:0'):
-	model.fit(x=observationStack,y=expectedStack,epochs=10,verbose=2,callbacks=[tensorboard_callback],use_multiprocessing=True) # multiprocessing?
+# observationStack = tf.stack(observations)
+# expectedStack = tf.stack(expecteds)
+# dataset = tf.data.Dataset.from_tensor_slices((observationStack, expectedStack))
+# # dataset = dataset.batch(32)
+# # dataset = dataset.shuffle(dataset.__len__(), reshuffle_each_iteration=True)
+# tf.data.experimental.save(dataset=dataset,path='saved_data')
+# with tf.device('/cpu:0'):
+# 	model.fit(x=observationStack,y=expectedStack,epochs=10,verbose=2,callbacks=[tensorboard_callback],use_multiprocessing=True) # multiprocessing?
 model.save('saved_model/my_model')
 print("Model Saved")

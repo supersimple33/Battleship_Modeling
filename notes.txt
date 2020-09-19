@@ -5,3 +5,8 @@ I have also tracked down a number of memory and worked on speeding up the root o
 
 Going to start today by adding on fit and a way to record memories will lean toward overfitting during these first few attempts at aquiring data.
 Added the functionality to get a dataset from the games that were played. However the model seems to not even be training itself and predicts the same value no matter what. Sigmoids are same for all but last.
+
+09/19
+Created a new file for training off of previously recorded memories.
+Great reduction in loss.
+Added a custom accuracy function which confirms findings of a positive response to binary crossentropy loss with dense network.

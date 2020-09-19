@@ -7,10 +7,12 @@ import numpy as np
 import tensorflow.keras.losses
 tensorflow.keras.losses.custom_loss = tf.nn.sigmoid_cross_entropy_with_logits
 
+from customs import customAccuracy
+
 env = gym.make('battleship1-v1')
 env.reset()
 
-trained_model = tf.keras.models.load_model('saved_model/my_model',compile=False)
+trained_model = tf.keras.models.load_model('saved_model/my_model',compile=False,custom_objects={'customAccuracy':customAccuracy})
 
 scores = []
 choices = []
@@ -33,7 +35,7 @@ for each_game in range(1):
 			pass
 		else:
 			logits = trained_model.predict_step(prev_obs)[0]
-			print(logits)
+			# print(logits)
 			action = tf.argmax(logits,-1).numpy()
 			print(action, logits[action].numpy(), tf.nn.softmax(logits)[action].numpy())
 		
