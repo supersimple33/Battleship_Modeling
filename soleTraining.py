@@ -2,19 +2,11 @@ import tensorflow as tf
 from tensorflow.keras.layers import InputLayer, Flatten, Dense, Dropout
 import tensorflow.keras.backend as K
 
+from customs import customAccuracy
+
 # one_tensor = tf.constant(1.0)
 # zero_tensor = tf.constant(0.0)
 # @tf.function
-def customAccuracy(y_true, y_pred):
-    trans = tf.transpose([y_true, y_pred],perm=[1,0,2])
-    accur = 0 
-    i = 0
-    for elem in trans:
-        move = tf.argmax(elem[1],-1)
-        v = elem[0][move]
-        accur += 1 if v == 1 else 0
-        i += 1
-    return accur / i
 
 # GET DATA
 spec = (tf.TensorSpec(shape=(10, 10, 6), dtype=tf.int32, name=None), tf.TensorSpec(shape=(100,), dtype=tf.float32, name=None))

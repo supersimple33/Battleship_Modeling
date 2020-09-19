@@ -28,7 +28,7 @@ import time
 print(tf.__version__)
 
 # MODEL TWEAKS
-NUM_GAMES = 60
+NUM_GAMES = 30000
 FILTERS = 64 # 64 because its cool
 EPSILON = 1.0 # Epsilon must start close to one or model training will scew incredibelly
 LEARNING_RATE = 0.001
@@ -123,7 +123,7 @@ lossAvg = tf.keras.metrics.Mean()
 # error = tf.keras.metrics.Mean()
 accuracy = tf.keras.metrics.CategoricalAccuracy()
 gameLength = tf.keras.metrics.Mean()
-model.compile(optimizer=optim,loss=f1_loss,metrics=[error,accuracy])
+model.compile(optimizer=optim,loss='binary_crossentropy',metrics=[error,accuracy])
 # summary_writer = tf.summary.create_file_writer('logs')
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir='logs', histogram_freq=1)
 print(model.summary())
