@@ -199,7 +199,7 @@ class Battleship1(gym.Env):
 		win = self.hitsOnShips == [5,4,3,3,2]
 		if win:
 			self.done = True
-			print("Game over: ", self.counter, " moves.", sep = "", end = "\n")
+			# print("Game over: ", self.counter, " moves.", sep = "", end = "\n")
 			self.reward = 100 - self.counter
 		return [self.hidState, self.reward, self.done, self.expectedShots]
 
