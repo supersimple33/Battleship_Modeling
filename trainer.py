@@ -28,7 +28,7 @@ import time
 print(tf.__version__)
 
 # MODEL TWEAKS
-NUM_GAMES = 60000
+NUM_GAMES = 60
 FILTERS = 64 # 64 because its cool
 EPSILON = 1.0 # Epsilon must start close to one or model training will scew incredibelly
 LEARNING_RATE = 0.001
@@ -245,8 +245,8 @@ for epoch in range(0,NUM_GAMES):
 observationStack = tf.stack(observations)
 expectedStack = tf.stack(expecteds)
 dataset = tf.data.Dataset.from_tensor_slices((observationStack, expectedStack))
-dataset = dataset.batch(32)
-dataset = dataset.shuffle(dataset.__len__(), reshuffle_each_iteration=True)
+# dataset = dataset.batch(32)
+# dataset = dataset.shuffle(dataset.__len__(), reshuffle_each_iteration=True)
 tf.data.experimental.save(dataset=dataset,path='saved_data')
 with tf.device('/cpu:0'):
 	model.fit(x=observationStack,y=expectedStack,epochs=10,verbose=2,callbacks=[tensorboard_callback],use_multiprocessing=True) # multiprocessing?

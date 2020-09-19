@@ -4,3 +4,4 @@ I have tried a number of different solutions however none have worked. A CONV ne
 I have also tracked down a number of memory and worked on speeding up the root of the enviroment.
 
 Going to start today by adding on fit and a way to record memories will lean toward overfitting during these first few attempts at aquiring data.
+Added the functionality to get a dataset from the games that were played. However the model seems to not even be training itself and predicts the same value no matter what. Sigmoids are same for all but last.
