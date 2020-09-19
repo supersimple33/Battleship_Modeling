@@ -77,6 +77,7 @@ if __name__ == '__main__':
 	fullGames = []
 	for i in range(5):
 		fullGames += ret[i][0]
+	print("started saving")
 	df = pd.DataFrame(fullGames)
-	df.to_csv('data.csv',index=False)
+	df.to_csv('data.csv',index=False,chunksize=10000)
 	print("saved csv")
