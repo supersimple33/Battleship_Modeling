@@ -14,7 +14,7 @@ import sys
 # import json
 import pandas as pd
 
-intial_games = 100
+intial_games = 5000
 
 # def playRandomGameFirst():
 # 	for step_index in range(goal_steps):
@@ -73,27 +73,10 @@ def worker(procnum):
 if __name__ == '__main__':
 	pool = multiprocessing.Pool(processes=5)
 	ret = pool.map(worker,range(5))
-	print(ret)
-	# manager = multiprocessing.Manager()
-	# return_dict = manager.dict()
-	# jobs = []
-	# for i in range(5):
-	# 	p = multiprocessing.Process(target=worker, args=(intial_games,i,return_dict))
-	# 	jobs.append(p)
-	# 	p.start()
 
-	# for proc in jobs:
-	# 	proc.join()
-	# print(return_dict)
-
-print("Simulating")
-# training_data, totalMovesMade = worker(intial_games)
-print("Data Collected")
-
-# print("Average Game Length = " + str(totalMovesMade / intial_games))
-
-# with open("data.json", "w") as f:
-# 	json.dump(training_data, f, ensure_ascii=False, indent=4)
-# 	print("Done")
-# 	f.close()
-# 	print("Closed")
+	fullGames = []
+	for i in range(5):
+		fullGames += ret[i][0]
+	df = pd.DataFrame(fullGames)
+	df.to_csv('data.csv',index=False)
+	print("saved csv")
