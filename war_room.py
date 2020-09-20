@@ -14,7 +14,7 @@ import sys
 # import json
 import pandas as pd
 
-intial_games = 350
+intial_games = 2500
 
 # def playRandomGameFirst():
 # 	for step_index in range(goal_steps):
@@ -79,5 +79,5 @@ if __name__ == '__main__':
 	print("started saving")
 	df = pd.DataFrame(fullGames,dtype=np.int32)
 	# df.astype('int64',copy=False)
-	df.to_csv('shortdata.csv',index=False,chunksize=1000)
+	df.to_csv('data.csv',index=False,chunksize=1000)
 	print("saved csv")
