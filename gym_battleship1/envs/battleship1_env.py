@@ -32,50 +32,50 @@ class Space(enum.Enum):
 def addShip(state, ship, len_, x, y, d):
 		r = range(0, len_)
 		# print(self.boardRep())
-		if d == 0:
+		if d == 0:# loop run twice in order to make sure all spaces are clear before making modifications
 			for j in r:
-				if state[y + j][x] != Space.Empty: # loop run twice in order to make sure all spaces are clear before making modifications
-					return False
-			for j in r:
-				state[y + j][x] = ship
-		elif d == 1:
-			for j in r:
-				if state[y][x + j] != Space.Empty:
-					return False
-			for j in r:
-				state[y][x + j] = ship
-		elif d == 2:
-			for j in r:
-				if state[y - j][x] != Space.Empty:
+				if state[y - j][x] != Space.Empty: 
 					return False
 			for j in r:
 				state[y - j][x] = ship
-		elif d == 3:
+		elif d == 1:
 			for j in r:
 				if state[y][x - j] != Space.Empty:
 					return False
 			for j in r:
 				state[y][x - j] = ship
+		elif d == 2:
+			for j in r:
+				if state[y + j][x] != Space.Empty:
+					return False
+			for j in r:
+				state[y + j][x] = ship
+		elif d == 3:
+			for j in r:
+				if state[y][x + j] != Space.Empty:
+					return False
+			for j in r:
+				state[y][x + j] = ship
 		return True
 
 def setupShips(np_random):
 		i = 0
 		# state = [[Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10]
 		state = np.full(shape=(10,10),fill_value=Space.Empty)
-		# shipIds = [0,1,2,3,4]
-		while (i < 5): #refactor outf
-			# s = np_random.choice(shipIds)
+		slots = np.arange(100).tolist()
+		while (i < 5): #refactor out
 			len_ = [5, 4, 3, 3, 2][i]#s
 			ship = [Space.HiddenFive, Space.HiddenFour, Space.HiddenCruiser, Space.HiddenSub, Space.HiddenTwo][i]#s
-			x = np_random.randint(0,9)
-			y = np_random.randint(0,9)
-			d = np_random.randint(0,3)
-			
-			if ((d % 2 == 1) and ((x - len_ < -1) or (x + len_) > 10)) or ((d % 2 == 0) and ((y - len_ < -1) or (y + len_) > 10)):
+			slot = np_random.choice(slots)
+			x = slot % 10
+			y = slot // 10
+			d = np_random.randint(4)
+			if not ((d == 0 and (y%10) - len_ >= 0) or (d == 1 and (x%10) - len_ >= 0) or (d == 2 and (y%10) + len_ <= 9) or (d == 3 and (x%10) + len_ <= 9)):
 				continue
 			elif (not addShip(state, ship, len_, x, y, d)): # could we add the ship, if not try again with new random coordinate
 				continue
-			# shipIds.remove(len_)
+			slots.remove(slot)
+			slots.remove((slot + (d-2)) if d%2==1 else (slot + 10*(d-1)))
 			i += 1
 		return state
 
@@ -231,3 +231,5 @@ class Battleship1(gym.Env):
 	def seed(self, seed=None):
 		self.np_random, seed = utils.seeding.np_random()
 		return [seed]
+
+e = Battleship1()
