@@ -14,7 +14,7 @@ import sys
 # import json
 import pandas as pd
 
-intial_games = 5000
+intial_games = 50
 
 # def playRandomGameFirst():
 # 	for step_index in range(goal_steps):
@@ -45,16 +45,15 @@ def worker(procnum):
 	for game_index in range(intial_games):
 		if game_index % 50 == 0:
 			print("Starting Simulation #" + str(game_index) + " for process #" + str(procnum))
-		previous_observation = np.full(shape=(100,),fill_value=Space.Empty)
+		previous_observation = np.full(shape=(6,10,10),fill_value=Space.Empty)
 		possMoves = possMovesNumpy.tolist()
 		done = False
 		while not done:
 			action = seeded.choice(possMoves)
 			observation, reward, done, _ = env.step(action)
 			if reward:
-				# ops = np.zeros((100,))
-				# ops[action] = 1
-				trainingData.append(np.append(vfunc(previous_observation),[action]))
+				v = np.transpose(vfunc(previous_observation), (2,0,1))
+				trainingData.append(np.append(v,[action]))
 				# numpy.append(previous_observation)
 				accepted_scores += 1
 
@@ -78,6 +77,7 @@ if __name__ == '__main__':
 	for i in range(5):
 		fullGames += ret[i][0]
 	print("started saving")
-	df = pd.DataFrame(fullGames)
-	df.to_csv('data.csv',index=False,chunksize=10000)
+	df = pd.DataFrame(fullGames,dtype=np.int32)
+	# df.astype('int64',copy=False)
+	df.to_csv('data.csv',index=False,chunksize=1000)
 	print("saved csv")
