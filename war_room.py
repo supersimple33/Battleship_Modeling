@@ -14,7 +14,7 @@ import sys
 # import json
 import pandas as pd
 
-intial_games = 50
+intial_games = 350
 
 # def playRandomGameFirst():
 # 	for step_index in range(goal_steps):
@@ -36,7 +36,7 @@ def worker(procnum):
 	seeded = random.Random()
 	print("Running on " + str(getpid()))
 	vfunc = np.vectorize(lambda e: e.value[0])
-	possMovesNumpy = np.arange(99)
+	possMovesNumpy = np.arange(100)
 	env = gym.make('battleship1-v1')
 	env.reset()
 	trainingData = []
@@ -70,8 +70,8 @@ def worker(procnum):
 	return trainingData, totalMovesMade
 
 if __name__ == '__main__':
-	pool = multiprocessing.Pool(processes=5)
-	ret = pool.map(worker,range(5))
+	pool = multiprocessing.Pool(processes=6)
+	ret = pool.map(worker,range(6))
 
 	fullGames = []
 	for i in range(5):
@@ -79,5 +79,5 @@ if __name__ == '__main__':
 	print("started saving")
 	df = pd.DataFrame(fullGames,dtype=np.int32)
 	# df.astype('int64',copy=False)
-	df.to_csv('data.csv',index=False,chunksize=1000)
+	df.to_csv('shortdata.csv',index=False,chunksize=1000)
 	print("saved csv")
