@@ -12,3 +12,7 @@ Great reduction in loss.
 Added a custom accuracy function which confirms findings of a positive response to binary crossentropy loss with dense network.
 Ultimately realized that above findings were due to a very small sample size allowing for over fitting.
 Reshaped the model to add residual that come back in at the very end. Should have increased game length but did not.
+Apples createml results in 96% accuracy for training data and used a boosted tree network. 
+I am going to look into implementing something like this in tensorflow.
+
+09/20 Implementing keras tuner to see if I can find better results on current training data.
