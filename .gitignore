@@ -1,4 +1,4 @@
 logs/train
 saved_data
 data.csv
-*.csv
+shortdata.csv

@@ -16,6 +16,9 @@ Apples createml results in 96% accuracy for training data and used a boosted tre
 I am going to look into implementing something like this in tensorflow.
 
 09/20 Implementing keras tuner to see if I can find better results on current training data.
+Results of keras tuning, while they did a good job training they ultimately failed evaluation and top models would double shoot squares.
+This could be due to not using validation accuracy.
+Next step will be keras tuning directly in reinforcment training.
 
 [Results summary]
  |-Results in ./untitled_project
