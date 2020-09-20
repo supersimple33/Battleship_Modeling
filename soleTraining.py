@@ -45,14 +45,14 @@ def custModel(hp):
 
 #should be based on validation accuracy
 obj = kt.Objective("val_customAccuracy", direction="max")
-# tuner = kt.RandomSearch(custModel, objective=obj, max_trials=20,executions_per_trial=2,project_name="tuner")
-tuner = kt.Hyperband(custModel, factor=2, hyperband_iterations=4, objective=obj, max_epochs=6, executions_per_trial=2, project_name="hbtuner")
+tuner = kt.RandomSearch(custModel, objective=obj, max_trials=30,executions_per_trial=2,project_name="rstuner")
+# tuner = kt.Hyperband(custModel, factor=2, hyperband_iterations=4, objective=obj, max_epochs=6, executions_per_trial=2, project_name="hbtuner")
 
 with tf.device('/cpu:0'):
 	print(f"Starting training with {len(trainDataset)} batches")
 	
 	tuner.search_space_summary()
-	tuner.search(trainDataset, validation_data=validationData, epochs=6, shuffle=True, use_multiprocessing=True, workers=4, verbose=2)
+	tuner.search(trainDataset, validation_data=validationData, epochs=5, shuffle=True, use_multiprocessing=True, workers=4, verbose=2)
 	tuner.results_summary() #224,384,224,100 #0.001
 
 	model = tuner.get_best_models(num_models=2)[0]
