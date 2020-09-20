@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tensorflow.keras.layers import InputLayer, Flatten, Dense, Reshape, GlobalMaxPool1D, Reshape, LocallyConnected1D, Add, Activation
+from tensorflow.keras.layers import InputLayer, Flatten, Dense, Reshape, GlobalMaxPool1D, Reshape, LocallyConnected1D, Add, Activation, Conv2D, BatchNormalization, LeakyReLU
 import tensorflow.keras.backend as K
 
 import kerastuner as kt
@@ -35,6 +35,9 @@ def f1_loss(y_true, y_pred):
 	f1 = tf.where(tf.math.is_nan(f1), tf.zeros_like(f1), f1)
 	return 1 - K.mean(f1)
 
+def buildModel0(hp):
+	pass
+
 def buildModel(hp):
 	m = tf.keras.Sequential()
 	m.add(InputLayer(input_shape=(10,10,6)))
@@ -48,7 +51,7 @@ def buildModel(hp):
 	m.add(Dense(100, activation='sigmoid'))
 	return m
 
-def buildModel2():
+def buildModel1():
 	inputLay = tf.keras.Input(shape=(10,10,6))
 	f = Flatten()(inputLay)
 	d1 = Dense(150,activation='relu')(f)
@@ -64,4 +67,32 @@ def buildModel2():
 
 	a = Add()([d2,f2])
 	out = Activation('sigmoid')(a)
+	return tf.keras.Model(inputs=inputLay, outputs=out)
+
+def convLayerCluster(inp, filters, axis, ch):
+	m = Conv2D(filters=filters,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=ch)(inp)
+	m = BatchNormalization(axis=axis)(m)
+	return LeakyReLU()(m)
+def residualLayerCluster(inp, filters, axis, ch):
+	m = convLayerCluster(inp, filters, axis, ch)
+	m = Conv2D(filters=filters,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=ch)(m)
+	m = BatchNormalization(axis=axis)(m)
+	m = Add()([inp,m])
+	return LeakyReLU()(m)
+reg = None # see if no reg helps # reg = tf.keras.regularizers.L2(l2=0.0001)
+def buildModel2(filters, axis, ch):
+	inputLay = tf.keras.Input(shape=(10,10,6))#12
+
+	m = Conv2D(filters=filters,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=ch)(inputLay)
+	# m = Conv2D(64,3,data_format=CHANNEL_TYPE)(inputLay)
+	m = BatchNormalization(axis=axis)(m) #-1 for channels last
+	m = LeakyReLU()(m)
+	m = residualLayerCluster(m, filters, axis, ch)
+	# m = residualLayerCluster(m) # removed on cluster for added simplricity
+
+	m = Conv2D(filters=6,kernel_size=(1,1),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=ch)(m) #12
+	m = BatchNormalization(axis=axis)(m)
+	m = LeakyReLU()(m)
+	m = Flatten()(m)
+	out = Dense(100,activation='sigmoid')(m) #
 	return tf.keras.Model(inputs=inputLay, outputs=out)

@@ -1,11 +1,4 @@
-# builtins.__dict__.update(locals())
-# t = timeit.Timer('conved = list(map(lambda x: list(map(lambda y: y.value[0], x)), prevObs))')
-# time = t.timeit(10000)
-# print(time / 10000)
-import faulthandler
 import multiprocessing
-# logger = open('log.txt', 'w')
-# faulthandler.enable(file=logger)
 
 import tensorflow as tf
 from tensorflow.keras.layers import InputLayer, Conv2D, BatchNormalization, LeakyReLU, Add, Flatten, Dense, Concatenate, Dot, Reshape, Dropout
@@ -37,56 +30,6 @@ LEARNING_RATE = 0.01
 MOMENTUM = 0.05
 CHANNEL_TYPE = "channels_last"
 AXIS = 1 if CHANNEL_TYPE == "channels_first" else -1
-
-def convLayerCluster(inp):
-	m = Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=CHANNEL_TYPE)(inp)
-	m = BatchNormalization(axis=AXIS)(m)
-	return LeakyReLU()(m)
-
-def residualLayerCluster(inp):
-	m = convLayerCluster(inp)
-	m = Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=CHANNEL_TYPE)(m)
-	m = BatchNormalization(axis=AXIS)(m)
-	m = Add()([inp,m])
-	return LeakyReLU()(m)
-
-#BUILDING MODEL
-# reg = tf.keras.regularizers.L2(l2=0.0001)
-reg = None # see if no reg helps 
-def buildModel():
-	inputLay = tf.keras.Input(shape=(10,10,6))#12
-
-	m = Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=CHANNEL_TYPE)(inputLay)
-	# m = Conv2D(64,3,data_format=CHANNEL_TYPE)(inputLay)
-	m = BatchNormalization(axis=AXIS)(m) #-1 for channels last
-	m = LeakyReLU()(m)
-
-	m = residualLayerCluster(m)
-	# m = residualLayerCluster(m)
-	# m = residualLayerCluster(m) # removed on cluster for added simplricity
-
-	m = Conv2D(filters=6,kernel_size=(1,1),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=CHANNEL_TYPE)(m) #12
-	m = BatchNormalization(axis=AXIS)(m)
-	m = LeakyReLU()(m)
-
-	m = Flatten()(m)
-	# og = Flatten()(inputLay)
-	# r = Concatenate(axis=1)([m,og])
-	out = Dense(100,activation='sigmoid')(m) #
-
-	return tf.keras.Model(inputs=inputLay, outputs=out)
-
-def oldBuildModel():
-	# inputLay = tf.keras.Input(shape=(10,10,6))
-	m = tf.keras.Sequential()
-	m.add(InputLayer(input_shape=(10,10,6)))
-	m.add(Flatten())
-	m.add(Dense(250,activation='relu'))
-	m.add(Dropout(.2))
-	m.add(Dense(150,activation='relu'))
-	m.add(Dropout(.2))
-	m.add(Dense(100,activation='sigmoid'))
-	return m
 
 # CONFIGURING THE MODEL
 
