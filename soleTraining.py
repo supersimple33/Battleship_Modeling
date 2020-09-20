@@ -20,7 +20,7 @@ from customs import customAccuracy, buildModel
 spec = (tf.TensorSpec(shape=(10, 10, 6), dtype=tf.int32, name=None), tf.TensorSpec(shape=(100,), dtype=tf.float32, name=None))
 dataset = tf.data.experimental.load('saved_data',spec)
 dataset = dataset.batch(32)
-# dataset = dataset.take(100)
+dataset = dataset.take(12380//2)
 # dataset = dataset.repeat(2)
 
 # npIter = tfds.as_numpy(dataset)
@@ -41,10 +41,10 @@ def custModel(hp):
 
 #should be based on validation accuracy
 obj = kt.Objective("customAccuracy", direction="max")
-tuner = kt.RandomSearch(custModel, objective=obj, max_trials=10,executions_per_trial=3)
+tuner = kt.RandomSearch(custModel, objective=obj, max_trials=10,executions_per_trial=3,project_name="tuner")
 
 tuner.search_space_summary()
-tuner.search(dataset, epochs=10)
+tuner.search(dataset, epochs=10, shuffle=True, multi_processing=True, workers=4)
 tuner.results_summary() #224,384,224,100 #0.001
 
 with tf.device('/cpu:0'):

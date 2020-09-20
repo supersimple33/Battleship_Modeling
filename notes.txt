@@ -16,3 +16,31 @@ Apples createml results in 96% accuracy for training data and used a boosted tre
 I am going to look into implementing something like this in tensorflow.
 
 09/20 Implementing keras tuner to see if I can find better results on current training data.
+
+[Results summary]
+ |-Results in ./untitled_project
+ |-Showing 10 best trials
+ |-Objective(name='customAccuracy', direction='max')
+[Trial summary]
+ |-Trial ID: 79495c04b074470eb994e8c9c038d4d0
+ |-Score: 0.6884676416714987
+ |-Best step: 0
+ > Hyperparameters:
+ |-learning_rate: 0.001
+ |-num_layers: 2
+ |-units_0: 288
+ |-units_1: 416
+ |-units_2: 160
+ |-units_3: 32
+[Trial summary]
+ |-Trial ID: 32922ae405aae8483caca37bef505b8c
+ |-Score: 0.6720315019289652
+ |-Best step: 0
+ > Hyperparameters:
+ |-learning_rate: 0.001
+ |-num_layers: 3
+ |-units_0: 288
+ |-units_1: 320
+ |-units_2: 448
+ |-units_3: 416
+
