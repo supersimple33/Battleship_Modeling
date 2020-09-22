@@ -25,7 +25,7 @@ print(tf.__version__)
 # MODEL TWEAKS
 NUM_GAMES = 12000
 FILTERS = 64 # 64 because its cool
-EPSILON = 0.95 # Epsilon must start close to one or model training will scew incredibelly
+EPSILON = 2.0 # Epsilon must start close to one or model training will scew incredibelly
 LEARNING_RATE = 0.01
 MOMENTUM = 0.05
 CHANNEL_TYPE = "channels_last"
@@ -34,8 +34,8 @@ AXIS = 1 if CHANNEL_TYPE == "channels_first" else -1
 # CONFIGURING THE MODEL
 
 # model = buildModel()
-model = oldBuildModel()
-# model = tf.keras.models.load_model('saved_model/my_model',compile=False)
+# model = oldBuildModel()
+model = tf.keras.models.load_model('saved_model/my_model',compile=False,custom_objects={'customAccuracy':customAccuracy})
 
 # lossFunc = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
 # optim = tf.keras.optimizers.SGD(lr=LEARNING_RATE, momentum = MOMENTUM) # optim = tf.keras.optimizers.SGD(lr=LEARNING_RATE, momentum = MOMENTUM)
@@ -57,7 +57,7 @@ print(model.summary())
 ct = time.time()
 env = gym.make('battleship1-v1')
 
-@tf.function # Decoration is 10 fold faster
+@tf.function(experimental_compile=True) # Decoration is 10 fold faster
 def makeMove(obs,e):
 	# print("Traced with " + str(e))
 	if e > 0:
@@ -70,7 +70,7 @@ def makeMove(obs,e):
 	preds = model(obs, training=False)
 	return tf.argmax(preds, 1)[0]
 
-# @tf.function
+# @tf.function(experimental_compile=True)
 def trainGrads(feature,expect):
 	with tf.GradientTape() as tape:
 		# predictions = self.model(features)
@@ -90,13 +90,14 @@ hits = 0
 iterartions = 0
 observations = []
 expecteds = []
+vfunc = np.vectorize(lambda e: e.value[0])
 # sess = tf.Session()
 for epoch in range(0,NUM_GAMES):
 	prevObs, prevOut = env.reset()
 	# prevObs = np.copy(prevObs)
 	prevOut = np.copy(prevOut) # could get rid of copy in replace of tensor conversion
-	prevObs = np.moveaxis(prevObs,0,-1) # CPU ONLY
-	prevObs = [[[x.value[0] for x in y] for y in c] for c in prevObs] # redo timeit with numpy
+	# prevObs = np.moveaxis(prevObs,0,-1) # CPU ONLY
+	prevObs = vfunc(prevObs) # redo timeit with numpy
 	prevObs = tf.convert_to_tensor([prevObs])
 
 	done = False
@@ -107,9 +108,7 @@ for epoch in range(0,NUM_GAMES):
 		move = makeMove(prevObs,EPSILON).numpy()
 		# print(move.numpy())
 		obs, reward, done, out = env.step(move)
-		obs = [[[x.value[0] for x in y] for y in c] for c in obs] # numpy may be faster
-
-		# out = tf.Variable(tf.zeros([100]))
+		obs = vfunc(obs) # numpy may be faster
 
 		if reward:
 			hits += 1
@@ -120,7 +119,7 @@ for epoch in range(0,NUM_GAMES):
 		# slotsLeft[move] = 0
 		expecteds.append(tf.cast(tf.convert_to_tensor(prevOut),dtype=tf.dtypes.float32))
 
-		obs = np.moveaxis(obs,0,-1) # CPU ONLY
+		# obs = np.moveaxis(obs,0,-1) # CPU ONLY
 		prevObs = tf.convert_to_tensor([obs])
 		prevOut = np.copy(out)
 		iterartions += 1
@@ -133,24 +132,24 @@ for epoch in range(0,NUM_GAMES):
 	# 	ret = trainGrads(tf.reshape(observations[i],shape=(1,10,10,6)),expecteds[i])
 	# 	pass
 	
-	if len(observations) > 32:
-		observations = tf.stack(observations)
-		expecteds = tf.stack(expecteds)
+	# if len(observations) > 32:
+	# 	observations = tf.stack(observations)
+	# 	expecteds = tf.stack(expecteds)
 		
-		ret = model.train_on_batch(x=observations,y=expecteds,reset_metrics=False,return_dict=True)
-		lossAvg.update_state(ret['loss'])
-		accuracy.update_state(ret['customAccuracy'])
+	# 	ret = model.train_on_batch(x=observations,y=expecteds,reset_metrics=False,return_dict=True)
+	# 	lossAvg.update_state(ret['loss'])
+	# 	accuracy.update_state(ret['customAccuracy'])
 
-		observations = []
-		expecteds = []
+	# 	observations = []
+	# 	expecteds = []
 
 	if (epoch+1) % (NUM_GAMES // 30) == 0:
-		with summary_writer.as_default():
-			tf.summary.scalar('Loss', lossAvg.result(), step=epoch+1)
-			tf.summary.scalar('Error', error.result(), step=epoch+1)
-			tf.summary.scalar('Accuracy', accuracy.result()*100, step=epoch+1)
-			tf.summary.scalar('Hits', 100*hits / iterartions, step=epoch+1)
-			tf.summary.scalar('Game Length', gameLength.result(), step=epoch+1)
+		# with summary_writer.as_default():
+			# tf.summary.scalar('Loss', lossAvg.result(), step=epoch+1)
+			# tf.summary.scalar('Error', error.result(), step=epoch+1)
+			# tf.summary.scalar('Accuracy', accuracy.result()*100, step=epoch+1)
+			# tf.summary.scalar('Hits', 100*hits / iterartions, step=epoch+1)
+			# tf.summary.scalar('Game Length', gameLength.result(), step=epoch+1)
 		print(f"Completed {epoch+1} epochs at {round(EPSILON,7)} in {round(time.time() - ct, 3)}s. L={round(float(lossAvg.result().numpy()),6)} E={round(float(error.result().numpy()),6)} A={round(float(accuracy.result().numpy()),6)} H={round(hits / iterartions,6)} I={round(float(gameLength.result().numpy()),3)}")
 		error.reset_states()
 		accuracy.reset_states()
@@ -158,19 +157,19 @@ for epoch in range(0,NUM_GAMES):
 		lossAvg.reset_states()
 		hits = 0
 		iterartions = 0
-		if EPSILON > 0.06:
-			EPSILON -= 0.02
-		else:
-			EPSILON /= 1.75
+		# if EPSILON > 0.06:
+		# 	EPSILON -= 0.02
+		# else:
+		# 	EPSILON /= 1.75
 		# model.save_weights('saved_model/checkpoints/cp')
 		ct = time.time()
 
-# observationStack = tf.stack(observations)
-# expectedStack = tf.stack(expecteds)
-# dataset = tf.data.Dataset.from_tensor_slices((observationStack, expectedStack))
-# # dataset = dataset.batch(32)
-# # dataset = dataset.shuffle(dataset.__len__(), reshuffle_each_iteration=True)
-# tf.data.experimental.save(dataset=dataset,path='saved_data')
+observationStack = tf.stack(observations)
+expectedStack = tf.stack(expecteds)
+dataset = tf.data.Dataset.from_tensor_slices((observationStack, expectedStack))
+# dataset = dataset.batch(32)
+# dataset = dataset.shuffle(dataset.__len__(), reshuffle_each_iteration=True)
+tf.data.experimental.save(dataset=dataset,path='saved_data',compression='GZIP')
 # with tf.device('/cpu:0'):
 # 	model.fit(x=observationStack,y=expectedStack,epochs=10,verbose=2,callbacks=[tensorboard_callback],use_multiprocessing=True) # multiprocessing?
 model.save('saved_model/my_model')

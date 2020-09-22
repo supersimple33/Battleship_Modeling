@@ -6,7 +6,7 @@ import os
 import tensorflow as tf
 print(tf.config.experimental.list_physical_devices())
 
-# tf.keras.backend.set_image_data_format('channels_first') #GPUs/TPUs
+tf.keras.backend.set_image_data_format('channels_first') #GPUs/TPUs
 
 import tensorflow_datasets as tfds
 
@@ -30,7 +30,7 @@ else:
 
 # GET DATA
 spec = (tf.TensorSpec(shape=(6, 10, 10), dtype=tf.int32, name=None), tf.TensorSpec(shape=(100,), dtype=tf.float32, name=None))
-dataset = tf.data.experimental.load('saved_data',spec)
+dataset = tf.data.experimental.load('saved_data',spec,compression='GZIP')
 dataset = dataset.batch(32)
 trainDataset = dataset.take(4500)
 validationData = dataset.skip(4500)
@@ -60,7 +60,7 @@ def custModel(hp):
 obj = kt.Objective("val_customAccuracy", direction="max")
 xmodel = kt.applications.xception.HyperXception(include_top=True, input_shape=(6,10,10), classes=100)
 # tuner = kt.RandomSearch(custModel, objective=obj, max_trials=30,executions_per_trial=2,project_name="rstuner")
-tuner = kt.Hyperband(xmodel, max_epochs=8, factor=2,hyperband_iterations=3, objective=obj, distribution_strategy=strategy, project_name="hbtuner", metrics=['mae', customAccuracy], loss='binary_crossentropy') #max_trials=40, max_epochs=6, executions_per_trial=2,
+tuner = kt.Hyperband(xmodel, max_epochs=8, factor=2, hyperband_iterations=4, objective=obj, distribution_strategy=strategy, project_name="hbtuner", metrics=['mae', customAccuracy], loss='binary_crossentropy') #max_trials=40, max_epochs=6, executions_per_trial=2,
 
 # with tf.device('CPU:2'):
 # 	print(f"Starting training with {len(trainDataset)} batches")
