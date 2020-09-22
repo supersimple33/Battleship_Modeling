@@ -2,3 +2,5 @@ logs/train
 saved_data
 data.csv
 shortdata.csv
+hbtuner/*
+rstuner/*
