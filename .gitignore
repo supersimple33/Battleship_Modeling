@@ -1,5 +1,7 @@
 logs/train
-saved_data
+*.shard
+!saved_data/snapshot.metadata
+!saved_data/6979445101886990092/00000000.shard
 data.csv
 shortdata.csv
 hbtuner/*
