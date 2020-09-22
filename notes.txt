@@ -19,6 +19,9 @@ I am going to look into implementing something like this in tensorflow.
 Results of keras tuning, while they did a good job training they ultimately failed evaluation and top models would double shoot squares.
 This could be due to not using validation accuracy.
 Next step will be keras tuning directly in reinforcment training.
+Tried multiple ways of activating radeon gpu on my mac however unsuccessful. 
+Going to use the colab instead.
+Also added xception and hyperband in hopes of finding a better performing model, however I am a little short onn dataset length.
 
 [Results summary]
  |-Results in ./untitled_project
