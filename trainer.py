@@ -23,7 +23,7 @@ from customs import customAccuracy
 print(tf.__version__)
 
 # MODEL TWEAKS
-NUM_GAMES = 12000
+NUM_GAMES = 30
 FILTERS = 64 # 64 because its cool
 EPSILON = 2.0 # Epsilon must start close to one or model training will scew incredibelly
 LEARNING_RATE = 0.01
@@ -164,9 +164,19 @@ for epoch in range(0,NUM_GAMES):
 		# model.save_weights('saved_model/checkpoints/cp')
 		ct = time.time()
 
-observationStack = tf.stack(observations)
-expectedStack = tf.stack(expecteds)
-dataset = tf.data.Dataset.from_tensor_slices((observationStack, expectedStack))
+# observationStack = tf.stack(observations)
+# expectedStack = tf.stack(expecteds)
+# dataset = tf.data.Dataset.from_tensor_slices((observationStack, expectedStack))
+
+observations = np.array(observations)
+expecteds = np.array(expecteds)
+
+with open('data.npz', 'wb') as f:
+	np.savez_compressed(f, observations, expecteds)
+# with open('data.npz', 'rb') as f:
+# 	l = np.load(f)
+# 	pass
+
 # dataset = dataset.batch(32)
 # dataset = dataset.shuffle(dataset.__len__(), reshuffle_each_iteration=True)
 tf.data.experimental.save(dataset=dataset,path='saved_data',compression='GZIP')
