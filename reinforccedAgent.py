@@ -43,7 +43,8 @@ class QNetwork(network.Network):
 			# tf.keras.layers.BatchNormalization(axis=1),
 			# tf.keras.layers.LeakyReLU(),
 			tf.keras.layers.Flatten(),
-			tf.keras.layers.Dense(150),
+			tf.keras.layers.Dense(288),
+			tf.keras.layers.Dense(416),
 			tf.keras.layers.Dense(num_actions,activation='sigmoid'), #tweak later
 		]
 
