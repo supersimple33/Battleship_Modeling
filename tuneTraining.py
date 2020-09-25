@@ -42,10 +42,10 @@ with open('data.npz', 'rb') as f:
 # dA = tf.data.Dataset.from_tensor_slices(nA)
 dataset = tf.data.Dataset.from_tensor_slices((nA,nB))
 
-dataset.shuffle(1000, seed=tf.constant(0, dtype=tf.int64))
+dataset.shuffle(1000, seed=tf.constant(0, dtype=tf.int64)) # only 1000 for speed ups
 dataset = dataset.batch(32)
 trainDataset = dataset.take(7500)
-validationData = dataset.skip(7501)
+validationData = dataset.skip(7500)
 validationData = validationData.take(750)
 dataset = dataset.repeat()
 
@@ -78,7 +78,7 @@ tuner = kt.Hyperband(xmodel, max_epochs=8, factor=2, hyperband_iterations=3, obj
 # 	print(f"Starting training with {len(trainDataset)} batches")
 
 tuner.search_space_summary()
-tuner.search(trainDataset, validation_data=validationData, shuffle=True, use_multiprocessing=True, workers=4, verbose=2) #epochs
+tuner.search(trainDataset, validation_data=validationData, use_multiprocessing=True, workers=4, verbose=2) #epochs
 tuner.results_summary() #224,384,224,100 #0.001
 
 model = tuner.get_best_models(num_models=2)[0]
