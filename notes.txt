@@ -50,3 +50,7 @@ Also added xception and hyperband in hopes of finding a better performing model,
  |-units_2: 448
  |-units_3: 416
 
+09/25 Switched to PaperSpace notebooks and have been training for quite a while.
+Discovered a fatal flaw in the shuffling of data which invalidates the hbtuner process.
+Continuing regardless in the interest of time.
+Training has been promsing producing upto 0.25 accuracy after less than four epochs still quite far from the values I have been targeting.
