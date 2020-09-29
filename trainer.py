@@ -16,7 +16,7 @@ import gym_battleship1
 import builtins
 # import timeit # DEBUG Only
 import time
-from random import randint
+from random import randint, shuffle
 # from collections import deques
 
 from customs import customAccuracy
@@ -134,17 +134,24 @@ for epoch in range(0,NUM_GAMES):
 	# for i in range(len(observations)): # FOR DEBUGGING #
 	# 	ret = trainGrads(tf.reshape(observations[i],shape=(1,10,10,6)),expecteds[i])
 	# 	pass
-	
-	# if len(observations) > 32:
-	# 	observations = tf.stack(observations)
-	# 	expecteds = tf.stack(expecteds)
-		
-	# 	ret = model.train_on_batch(x=observations,y=expecteds,reset_metrics=False,return_dict=True)
-	# 	lossAvg.update_state(ret['loss'])
-	# 	accuracy.update_state(ret['customAccuracy'])
 
-	# 	observations = []
-	# 	expecteds = []
+	n=32
+	if len(observations) > 320:
+		observations = shuffle(observations)
+		expecteds = shuffle(expecteds)
+		observations = [observations[i:i + n] for i in range(0, len(observations), n)]
+		expecteds = [expecteds[i:i + n] for i in range(0, len(expecteds), n)]
+		for b in range(len(observations)):
+
+			observations = tf.stack(observations[b])
+			expecteds = tf.stack(expecteds[b])
+
+			ret = model.train_on_batch(x=observations,y=expecteds,reset_metrics=False,return_dict=True)
+			lossAvg.update_state(ret['loss'])
+			accuracy.update_state(ret['customAccuracy'])
+
+			observations = []
+			expecteds = []
 
 	if (epoch+1) % (NUM_GAMES // 30) == 0:
 		# with summary_writer.as_default():
