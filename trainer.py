@@ -137,8 +137,8 @@ for epoch in range(0,NUM_GAMES):
 
 	n=32
 	if len(observations) > 320:
-		observations = shuffle(observations)
-		expecteds = shuffle(expecteds)
+		shuffle(observations)
+		shuffle(expecteds)
 		observations = [observations[i:i + n] for i in range(0, len(observations), n)]
 		expecteds = [expecteds[i:i + n] for i in range(0, len(expecteds), n)]
 		for b in range(len(observations)):
