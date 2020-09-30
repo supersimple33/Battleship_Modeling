@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tensorflow.keras.layers import InputLayer, Flatten, Dense, Reshape, GlobalMaxPool1D, Reshape, LocallyConnected1D, Add, Activation, Conv2D, BatchNormalization, LeakyReLU
+from tensorflow.keras.layers import InputLayer, Flatten, Dense, Reshape, GlobalMaxPool1D, Reshape, LocallyConnected1D, Add, Activation, Conv2D, BatchNormalization, LeakyReLU, MaxPool2D, AveragePooling2D, Concatenate
 import tensorflow.keras.backend as K
 
 import kerastuner as kt
@@ -11,7 +11,7 @@ def customAccuracy(y_true, y_pred):
 	i = 0
 	for elem in trans:
 		move = tf.argmax(elem[1],-1)
-		v = elem[0][move]
+		v = elem[0][move] #which is first?
 		accur += 1 if v == 1 else 0
 		i += 1
 	return accur / i
@@ -36,7 +36,31 @@ def f1_loss(y_true, y_pred):
 	return 1 - K.mean(f1)
 
 def buildModel0(hp):
-	pass
+	# numFilters = hp.Int(name="num_filter", min_value=16, max_value=128, step=16, default=64)
+	# activation = hp.Choice(["relu, selu"],name='activation')
+	numFilters = 48
+	activation = 'relu'
+
+
+	inputLay = tf.keras.Input(shape=(6,10,10))
+
+	c1 = Conv2D(filters=numFilters,kernel_size=1,activation=activation)(inputLay) # locally connected instead?
+
+	c3 = Conv2D(filters=numFilters, kernel_size=1, activation=activation)(inputLay)
+	c3 = Conv2D(filters=numFilters, kernel_size=3, activation=activation)(c3)
+
+	c5 = Conv2D(filters=numFilters, kernel_size=1, activation=activation)(inputLay)
+	c5 = Conv2D(filters=numFilters, kernel_size=5, activation=activation)(c3)
+
+	ap = AveragePooling2D(3, 1)(inputLay)
+	ap = Conv2D(filters=numFilters, kernel_size=1, activation=activation)(ap)
+
+	conc = Concatenate(axis=1)([c1,c3,c5,ap])
+	c0 = Conv2D(filters=32,kernelSize=3, activation=activation)(conc)
+
+	f = Flatten()(c0)
+	out = Dense(100, activation='sigmoid')(f)
+	return tf.keras.Model(inputs=inputLay, outputs=out)
 
 def buildModel(hp):
 	m = tf.keras.Sequential()

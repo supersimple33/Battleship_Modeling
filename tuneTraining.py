@@ -29,7 +29,7 @@ else:
 	strategy = tf.distribute.get_strategy()
 
 # GET DATA
-spec = (tf.TensorSpec(shape=(6, 10, 10), dtype=tf.int32, name=None), tf.TensorSpec(shape=(100,), dtype=tf.float32, name=None))
+# spec = (tf.TensorSpec(shape=(6, 10, 10), dtype=tf.int32, name=None), tf.TensorSpec(shape=(100,), dtype=tf.float32, name=None))
 # dataset = tf.data.experimental.load('saved_data',spec,compression='GZIP')
 
 with open('data.npz', 'rb') as f:
@@ -42,7 +42,7 @@ with open('data.npz', 'rb') as f:
 # dA = tf.data.Dataset.from_tensor_slices(nA)
 dataset = tf.data.Dataset.from_tensor_slices((nA,nB))
 
-dataset.shuffle(1000, seed=tf.constant(0, dtype=tf.int64)) # only 1000 for speed ups
+dataset.shuffle(1000, seed=tf.constant(42, dtype=tf.int64)) # only 1000 for speed ups, seed at 42 for consistent return
 dataset = dataset.batch(32)
 trainDataset = dataset.take(7500)
 validationData = dataset.skip(7500)
@@ -81,6 +81,6 @@ tuner.search_space_summary()
 tuner.search(trainDataset, validation_data=validationData, use_multiprocessing=True, workers=4, verbose=2) #epochs
 tuner.results_summary() #224,384,224,100 #0.001
 
-model = tuner.get_best_models(num_models=2)[0]
+model = tuner.get_best_models(num_models=1)[0]
 model.save('saved_model/test')
 print("Model Saved")
