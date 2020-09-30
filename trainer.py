@@ -24,7 +24,7 @@ from customs import customAccuracy
 print(tf.__version__)
 
 # MODEL TWEAKS
-NUM_GAMES = 30
+NUM_GAMES = 3000
 FILTERS = 64 # 64 because its cool
 EPSILON = 2.0 # Epsilon must start close to one or model training will scew incredibelly
 LEARNING_RATE = 0.01
@@ -58,18 +58,20 @@ print(model.summary())
 ct = time.time()
 env = gym.make('battleship1-v1')
 
-# @tf.function(experimental_compile=True) # Decoration is 10 fold faster
-# def makeMove(obs,e):
-# 	# print("Traced with " + str(e))
-# 	if e > 0:
-# 		r = tf.random.uniform(shape=[],dtype=tf.dtypes.float16)
-# 		if r < EPSILON:
-# 			return tf.random.uniform(shape=[],maxval=100,dtype=tf.dtypes.int64)
-# 		else:
-# 			preds = model(obs, training=False)
-# 			return tf.argmax(preds, 1)[0]
-# 	preds = model(obs, training=False)
-# 	return tf.argmax(preds, 1)[0]
+@tf.function(experimental_compile=True) # Decoration is 10 fold faster
+def makeMove(obs,e):
+	# print("Traced with " + str(e))
+	if e > 0:
+		r = tf.random.uniform(shape=[],dtype=tf.dtypes.float16)
+		if r < EPSILON:
+			L = int(200 * r / e)
+			return L
+			# return tf.random.uniform(shape=[],maxval=100,dtype=tf.dtypes.int64)
+		else:
+			preds = model(obs, training=False)
+			return tf.argmax(preds, 1)[0]
+	preds = model(obs, training=False)
+	return tf.argmax(preds, 1)[0]
 
 # @tf.function(experimental_compile=True)
 def trainGrads(feature,expect):
@@ -106,8 +108,8 @@ for epoch in range(0,NUM_GAMES):
 	slotsLeft = np.ones(shape=100,dtype=np.float32)
 	while not done:
 		# Could Accelerate this, however few tf methods, and a couple of outside methods
-		# move = makeMove(prevObs,EPSILON).numpy()
-		move = randint(0,99)
+		move = makeMove(prevObs,EPSILON).numpy()
+		# move = randint(0,99)
 		# print(move.numpy())
 		obs, reward, done, out = env.step(move)
 		obs = vfunc(obs) # numpy may be faster
@@ -135,12 +137,12 @@ for epoch in range(0,NUM_GAMES):
 	# 	ret = trainGrads(tf.reshape(observations[i],shape=(1,10,10,6)),expecteds[i])
 	# 	pass
 
-	n=32
+	batch_size = 32
 	if len(observations) > 320:
 		shuffle(observations)
 		shuffle(expecteds)
-		observations = [observations[i:i + n] for i in range(0, len(observations), n)]
-		expecteds = [expecteds[i:i + n] for i in range(0, len(expecteds), n)]
+		observations = [observations[i:i + batch_size] for i in range(0, len(observations), batch_size)]
+		expecteds = [expecteds[i:i + batch_size] for i in range(0, len(expecteds), batch_size)]
 		for b in range(len(observations)):
 
 			observations = tf.stack(observations[b])
@@ -167,10 +169,10 @@ for epoch in range(0,NUM_GAMES):
 		lossAvg.reset_states()
 		hits = 0
 		iterartions = 0
-		# if EPSILON > 0.06:
-		# 	EPSILON -= 0.02
-		# else:
-		# 	EPSILON /= 1.75
+		if EPSILON > 0.06:
+			EPSILON -= 0.02
+		else:
+			EPSILON /= 1.75
 		# model.save_weights('saved_model/checkpoints/cp')
 		ct = time.time()
 
@@ -178,22 +180,22 @@ for epoch in range(0,NUM_GAMES):
 # expectedStack = tf.stack(expecteds)
 # dataset = tf.data.Dataset.from_tensor_slices((observationStack, expectedStack))
 
-observations = np.array(observations)
-expecteds = np.array(expecteds)
+# observations = np.array(observations)
+# expecteds = np.array(expecteds)
 # print(observations)
 
-with open('data.npz', 'wb') as f:
-	print('started save')
-	np.savez_compressed(f, observations, expecteds)
-	print('saved')
-with open('data.npz', 'rb') as f:
-	l = np.load(f)
-	pass
+# with open('data.npz', 'wb') as f:
+# 	print('started save')
+# 	np.savez_compressed(f, observations, expecteds)
+# 	print('saved')
+# with open('data.npz', 'rb') as f:
+# 	l = np.load(f)
+	# pass
 
 # dataset = dataset.batch(32)
 # dataset = dataset.shuffle(dataset.__len__(), reshuffle_each_iteration=True)
 # tf.data.experimental.save(dataset=dataset,path='saved_data',compression='GZIP')
 # with tf.device('/cpu:0'):
 # 	model.fit(x=observationStack,y=expectedStack,epochs=10,verbose=2,callbacks=[tensorboard_callback],use_multiprocessing=True) # multiprocessing?
-# model.save('saved_model/my_model')
-# print("Model Saved")
+model.save('saved_model/my_model')
+print("Model Saved")
