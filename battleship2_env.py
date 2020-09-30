@@ -86,8 +86,8 @@ class Battleship2(py_environment.PyEnvironment):
 	metadata = {'render.modes': ['human']}
 
 	def __init__(self):
-		self._action_spec = array_spec.BoundedArraySpec(shape=(), dtype=np.float32, minimum=0, maximum=99, name='action')
-		self._observation_spec = array_spec.BoundedArraySpec(shape=(10,10,6), dtype=np.float32, minimum=0, maximum=2, name='observation')
+		self._action_spec = array_spec.BoundedArraySpec(shape=(), dtype=np.int32, minimum=0, maximum=99, name='action')
+		self._observation_spec = array_spec.BoundedArraySpec(shape=(10,10,6), dtype=np.int32, minimum=0, maximum=2, name='observation')
 		# self.seed()
 
 		self.reset()
@@ -136,7 +136,6 @@ class Battleship2(py_environment.PyEnvironment):
 						break
 
 	def _step(self, target):
-		target = int(target)
 		x = target % 10
 		y = target // 10
 		targetSpace = self._state[y][x]
@@ -210,7 +209,7 @@ class Battleship2(py_environment.PyEnvironment):
 
 	def _reset(self):
 		self._state = setupShips()
-		self.hidState = np.full(shape=(6,10,10),fill_value=0,dtype=np.float32)
+		self.hidState = np.full(shape=(6,10,10),fill_value=0,dtype=np.int32)
 		self.expectedShots = np.reshape(self._state, (100))
 		
 		self.hitsOnShips = [0, 0, 0, 0, 0]

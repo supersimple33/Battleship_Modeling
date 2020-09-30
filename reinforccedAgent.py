@@ -4,7 +4,7 @@ import numpy as np
 
 import time
 
-from tf_agents.networks import network, q_network
+from tf_agents.networks import network
 from tf_agents.environments import tf_py_environment
 from tf_agents.policies import q_policy
 from tf_agents.metrics import tf_metrics
@@ -36,6 +36,12 @@ class QNetwork(network.Network):
 			state_spec=(),
 			name=name)
 		self._sub_layers = [
+			# tf.keras.layers.Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=REG,data_format=CHANNEL_TYPE),
+			# tf.keras.layers.BatchNormalization(axis=-1),
+			# tf.keras.layers.LeakyReLU(),
+			# tf.keras.layers.Conv2D(filters=FILTERS,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=REG,data_format=CHANNEL_TYPE),
+			# tf.keras.layers.BatchNormalization(axis=1),
+			# tf.keras.layers.LeakyReLU(),
 			tf.keras.layers.Flatten(),
 			tf.keras.layers.Dense(288),
 			tf.keras.layers.Dense(416),
@@ -51,8 +57,7 @@ class QNetwork(network.Network):
 
 timSpec = tf_env.time_step_spec()
 obsSpec = tf_env.observation_spec()
-# q_net = QNetwork(input_tensor_spec=obsSpec,action_spec=action_spec)
-q_net = q_network.QNetwork(input_tensor_spec=obsSpec, batch_squash=False, action_spec=action_spec, conv_layer_params=[(32, 5, 1)], fc_layer_params=None) #, preprocessing_layers=[tf.keras.layers.Lambda(lambda x: tf.cast(x, tf.float32))]
+q_net = QNetwork(input_tensor_spec=obsSpec,action_spec=action_spec)
 q_net.create_variables(obsSpec, training=True)
 print(q_net.summary())
 q_policy = q_policy.QPolicy(timSpec, action_spec, q_network=q_net)
@@ -113,10 +118,9 @@ for epoch in range(EPOCHS):
 	replay_buffer.clear()
 
 	if (epoch+1) % (NUM_GAMES//10) == 0:
-		print(f"done A{epoch}, {lossAvg.result().numpy()}, {env_steps.result().numpy() / num_episodes.result().numpy()}")
+		print(f"done A {lossAvg.result().numpy()}, {env_steps.result().numpy() / num_episodes.result().numpy()}")
 		lossAvg.reset_states()
 		env_steps.reset()
-		num_episodes.reset()
 
 train_checkpointer = common.Checkpointer(ckpt_dir='saved_model/checkpoint2/cp',max_to_keep=1,agent=agent,policy=agent.policy,replay_buffer=replay_buffer,global_step=global_step)
 train_checkpointer.save(global_step)
