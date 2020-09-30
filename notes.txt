@@ -54,3 +54,7 @@ Also added xception and hyperband in hopes of finding a better performing model,
 Discovered a fatal flaw in the shuffling of data which invalidates the hbtuner process.
 Continuing regardless in the interest of time.
 Training has been promsing producing upto 0.25 accuracy after less than four epochs still quite far from the values I have been targeting.
+
+09/30 Finished with xception keras-tuning and was left with semi accurate models however loss was 0.6~0.7.
+Ultimately learned that I need a small model with inception and fewer layers.
+Created my own model with 
