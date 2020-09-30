@@ -55,8 +55,8 @@ def buildModel0(hp):
 	ap = Conv2D(filters=numFilters, kernel_size=1, activation=activation, padding='same')(ap)
 
 	conc0 = Concatenate(axis=1)([c1,c3,c5,ap])
-	c0 = Conv2D(filters=32,kernel_size=3, activation=activation, padding='same')(conc0)
-	
+	c0 = Conv2D(filters=63, kernel_size=3, activation=activation, padding='same')(conc0)
+
 	misses = Lambda(lambda x: K.expand_dims(x[:,0,:,:], axis=1))(inputLay)
 	conc1 = Concatenate(axis=1)([c0,misses])
 

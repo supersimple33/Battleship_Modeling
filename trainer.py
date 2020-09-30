@@ -19,7 +19,7 @@ import time
 from random import randint, shuffle
 # from collections import deques
 
-from customs import customAccuracy
+from customs import customAccuracy, buildModel0
 
 print(tf.__version__)
 
@@ -34,9 +34,9 @@ AXIS = 1 if CHANNEL_TYPE == "channels_first" else -1
 # print(NUM_GAMES)
 # CONFIGURING THE MODEL
 
-# model = buildModel()
+model = buildModel0(None)
 # model = oldBuildModel()
-model = tf.keras.models.load_model('saved_model/my_model',compile=False,custom_objects={'customAccuracy':customAccuracy})
+# model = tf.keras.models.load_model('saved_model/my_model',compile=False,custom_objects={'customAccuracy':customAccuracy})
 
 # lossFunc = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
 # optim = tf.keras.optimizers.SGD(lr=LEARNING_RATE, momentum = MOMENTUM) # optim = tf.keras.optimizers.SGD(lr=LEARNING_RATE, momentum = MOMENTUM)
@@ -58,14 +58,15 @@ print(model.summary())
 ct = time.time()
 env = gym.make('battleship1-v1')
 
+availibleMoves = tf.range(0,100, dtype=tf.int64)
 @tf.function(experimental_compile=True) # Decoration is 10 fold faster
 def makeMove(obs,e):
 	# print("Traced with " + str(e))
 	if e > 0:
 		r = tf.random.uniform(shape=[],dtype=tf.dtypes.float16)
 		if r < EPSILON:
-			L = int(200 * r / e)
-			return L
+			L = int(200 * r / e) # skips having to do another round of random
+			return availibleMoves[L]
 			# return tf.random.uniform(shape=[],maxval=100,dtype=tf.dtypes.int64)
 		else:
 			preds = model(obs, training=False)
@@ -101,7 +102,7 @@ for epoch in range(0,NUM_GAMES):
 	prevOut = np.copy(prevOut) # could get rid of copy in replace of tensor conversion
 	# prevObs = np.moveaxis(prevObs,0,-1) # CPU ONLY
 	prevObs = vfunc(prevObs) # redo timeit with numpy
-# 	prevObs = tf.convert_to_tensor([prevObs])
+	prevObs = tf.convert_to_tensor([prevObs])
 
 	done = False
 
@@ -125,7 +126,7 @@ for epoch in range(0,NUM_GAMES):
 # 		expecteds.append(tf.cast(tf.convert_to_tensor(prevOut),dtype=tf.dtypes.float32))
 
 		# obs = np.moveaxis(obs,0,-1) # CPU ONLY
-# 		prevObs = tf.convert_to_tensor([obs])
+		prevObs = tf.convert_to_tensor([obs])
 		prevOut = np.copy(out)
 		iterartions += 1
 		if done:
@@ -145,15 +146,15 @@ for epoch in range(0,NUM_GAMES):
 		expecteds = [expecteds[i:i + batch_size] for i in range(0, len(expecteds), batch_size)]
 		for b in range(len(observations)):
 
-			observations = tf.stack(observations[b])
-			expecteds = tf.stack(expecteds[b])
+			obsBatch = tf.stack(observations[b])
+			expBatch = tf.stack(expecteds[b])
 
-			ret = model.train_on_batch(x=observations,y=expecteds,reset_metrics=False,return_dict=True)
+			ret = model.train_on_batch(x=obsBatch,y=expBatch,reset_metrics=False,return_dict=True)
 			lossAvg.update_state(ret['loss'])
 			accuracy.update_state(ret['customAccuracy'])
 
-			observations = []
-			expecteds = []
+		observations = []
+		expecteds = []
 
 	if (epoch+1) % (NUM_GAMES // 30) == 0:
 		# with summary_writer.as_default():
