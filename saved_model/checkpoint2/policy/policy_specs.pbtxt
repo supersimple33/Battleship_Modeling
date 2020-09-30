@@ -31,18 +31,18 @@ dict_value {
                   size: 6
                 }
               }
-              dtype: DT_INT32
+              dtype: DT_FLOAT
               minimum {
-                dtype: DT_INT32
+                dtype: DT_FLOAT
                 tensor_shape {
                 }
-                int_val: 0
+                float_val: 0.0
               }
               maximum {
-                dtype: DT_INT32
+                dtype: DT_FLOAT
                 tensor_shape {
                 }
-                int_val: 2
+                float_val: 2.0
               }
             }
           }
@@ -54,18 +54,18 @@ dict_value {
               name: "action"
               shape {
               }
-              dtype: DT_INT32
+              dtype: DT_FLOAT
               minimum {
-                dtype: DT_INT32
+                dtype: DT_FLOAT
                 tensor_shape {
                 }
-                int_val: 0
+                float_val: 0.0
               }
               maximum {
-                dtype: DT_INT32
+                dtype: DT_FLOAT
                 tensor_shape {
                 }
-                int_val: 99
+                float_val: 99.0
               }
             }
           }

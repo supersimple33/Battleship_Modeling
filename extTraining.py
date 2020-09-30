@@ -23,6 +23,7 @@ else:
 with open('data.npz', 'rb') as f:
 	l = np.load(f)
 	nA = l['arr_0'] #tf.stack(
+	nA = np.transpose(nA, (0, 2, 3, 1))
 	nB = l['arr_1']
 	l.close()
 dataset = tf.data.Dataset.from_tensor_slices((nA,nB))
@@ -32,9 +33,9 @@ dataset = dataset.batch(32)
 trainDataset = dataset.take(23035) #27100
 validationData = dataset.skip(23035)
 
-trainDataset = trainDataset.repeat()
-validationData = validationData.repeat()
-
+trainDataset = trainDataset.repeat().prefetch(2)
+validationData = validationData.repeat().prefetch(2)
+print("loaded")
 # obj = kt.Objective("val_customAccuracy", direction="max")
 # xmodel = kt.applications.xception.HyperXception(include_top=True, input_shape=(6,10,10), classes=100)
 # tuner = kt.Hyperband(xmodel, max_epochs=8, factor=2, hyperband_iterations=3, objective=obj, distribution_strategy=strategy, project_name="hbtuner", metrics=['mae', customAccuracy], loss='binary_crossentropy') #max_trials=40, max_epochs=6, executions_per_trial=2,
@@ -45,7 +46,8 @@ validationData = validationData.repeat()
 # model = tf.keras.models.load_model('saved_model/my_model',compile=True,custom_objects={'customAccuracy':customAccuracy})
 model = buildModel0(None)
 model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001), loss='binary_crossentropy', metrics=['mae', customAccuracy])
+model.summary()
 
 es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=2)
-model.fit(trainDataset, validation_data=validationData, use_multiprocessing=True, workers=4, verbose=2, steps_per_epoch=22222, validation_steps=4065, callbacks=[es])
+model.fit(trainDataset, validation_data=validationData, use_multiprocessing=True, workers=4, verbose=1, steps_per_epoch=22222, validation_steps=4065, callbacks=[es])
 model.save('saved_model/test0')

@@ -44,10 +44,10 @@ dataset = tf.data.Dataset.from_tensor_slices((nA,nB))
 
 dataset.shuffle(1000, seed=tf.constant(42, dtype=tf.int64)) # only 1000 for speed ups, seed at 42 for consistent return
 dataset = dataset.batch(32)
-trainDataset = dataset.take(7500)
+trainDataset = dataset.take(7500).prefetch(2)
 validationData = dataset.skip(7500)
-validationData = validationData.take(750)
-dataset = dataset.repeat()
+validationData = validationData.take(750).prefetch(2)
+# dataset = dataset.repeat()
 
 # npIter = tfds.as_numpy(dataset)
 

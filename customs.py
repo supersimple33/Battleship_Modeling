@@ -42,24 +42,54 @@ def buildModel0(hp):
 	activation = 'relu'
 
 
-	inputLay = tf.keras.Input(shape=(6,10,10))
+	inputLay = tf.keras.Input(shape=(10,10,6))
 
-	c1 = Conv2D(filters=numFilters,kernel_size=1,activation=activation)(inputLay) # locally connected instead?
+	c1 = Conv2D(filters=numFilters,kernel_size=1,activation=activation, padding='same')(inputLay) # locally connected instead?
 
-	c3 = Conv2D(filters=numFilters, kernel_size=1, activation=activation)(inputLay)
-	c3 = Conv2D(filters=numFilters, kernel_size=3, activation=activation)(c3)
+	c3 = Conv2D(filters=numFilters, kernel_size=1, activation=activation, padding='same')(inputLay)
+	c3 = Conv2D(filters=numFilters, kernel_size=3, activation=activation, padding='same')(c3)
 
-	c5 = Conv2D(filters=numFilters, kernel_size=1, activation=activation)(inputLay)
-	c5 = Conv2D(filters=numFilters, kernel_size=5, activation=activation)(c3)
+	c5 = Conv2D(filters=numFilters, kernel_size=1, activation=activation, padding='same')(inputLay)
+	c5 = Conv2D(filters=numFilters, kernel_size=5, activation=activation, padding='same')(c3)
 
-	ap = AveragePooling2D(3, 1)(inputLay)
-	ap = Conv2D(filters=numFilters, kernel_size=1, activation=activation)(ap)
+	ap = AveragePooling2D(3, 1, padding='same')(inputLay)
+	ap = Conv2D(filters=numFilters, kernel_size=1, activation=activation, padding='same')(ap)
 
-	conc = Concatenate(axis=1)([c1,c3,c5,ap])
-	c0 = Conv2D(filters=32,kernelSize=3, activation=activation)(conc)
+	conc = Concatenate(axis=-1)([c1,c3,c5,ap])
+	c0 = Conv2D(filters=32,kernel_size=5, activation=activation, padding='same')(conc)
 
 	f = Flatten()(c0)
 	out = Dense(100, activation='sigmoid')(f)
+	return tf.keras.Model(inputs=inputLay, outputs=out)
+
+def buildModel2():
+	# numFilters = hp.Int(name="num_filter", min_value=16, max_value=128, step=16, default=64)
+	# activation = hp.Choice(["relu, selu"],name='activation')
+	numFilters = 48
+	activation = 'relu'
+
+	inputLay = tf.keras.Input(shape=(6,10,10))
+
+	c1 = Conv2D(filters=numFilters, kernel_size=1, activation=activation, padding='same')(inputLay) # locally connected instead?
+
+	c3 = Conv2D(filters=numFilters, kernel_size=1, activation=activation, padding='same')(inputLay)
+	c3 = Conv2D(filters=numFilters*2, kernel_size=3, activation=activation, padding='same')(c3)
+
+	c5 = Conv2D(filters=numFilters, kernel_size=1, activation=activation, padding='same')(inputLay)
+	c5 = Conv2D(filters=numFilters*2, kernel_size=5, activation=activation, padding='same')(c3)
+
+	ap = AveragePooling2D(3, 1, padding='same')(inputLay)
+	ap = Conv2D(filters=numFilters*2, kernel_size=1, activation=activation, padding='same')(ap)
+
+	conc0 = Concatenate(axis=1)([c1,c3,c5,ap]) #channel dependent
+	c0 = Conv2D(filters=63,kernel_size=5, activation=activation, padding='same')(conc0)
+
+	misses = Lambda(lambda x: K.expand_dims(x[:,0,:,:], axis=1))(inputLay) #channel dependent
+	conc1 = Concatenate(axis=1)([c0, misses]) #channel dependent
+
+	fc0 = LocallyConnected2D(filters=1, kernel_size=20,padding='same',activation='sigmoid',implementation=2)(c0) #3?
+	out = Flatten()(fc0)
+# 	fc0 = Dense(100, activation='sigmoid')(out)
 	return tf.keras.Model(inputs=inputLay, outputs=out)
 
 def buildModel(hp):
@@ -91,32 +121,4 @@ def buildModel1():
 
 	a = Add()([d2,f2])
 	out = Activation('sigmoid')(a)
-	return tf.keras.Model(inputs=inputLay, outputs=out)
-
-def convLayerCluster(inp, filters, axis, ch):
-	m = Conv2D(filters=filters,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=ch)(inp)
-	m = BatchNormalization(axis=axis)(m)
-	return LeakyReLU()(m)
-def residualLayerCluster(inp, filters, axis, ch):
-	m = convLayerCluster(inp, filters, axis, ch)
-	m = Conv2D(filters=filters,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=ch)(m)
-	m = BatchNormalization(axis=axis)(m)
-	m = Add()([inp,m])
-	return LeakyReLU()(m)
-reg = None # see if no reg helps # reg = tf.keras.regularizers.L2(l2=0.0001)
-def buildModel2(filters, axis, ch):
-	inputLay = tf.keras.Input(shape=(10,10,6))#12
-
-	m = Conv2D(filters=filters,kernel_size=(3,3),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=ch)(inputLay)
-	# m = Conv2D(64,3,data_format=CHANNEL_TYPE)(inputLay)
-	m = BatchNormalization(axis=axis)(m) #-1 for channels last
-	m = LeakyReLU()(m)
-	m = residualLayerCluster(m, filters, axis, ch)
-	# m = residualLayerCluster(m) # removed on cluster for added simplricity
-
-	m = Conv2D(filters=6,kernel_size=(1,1),padding="same",use_bias=False,activation='linear',kernel_regularizer=reg,data_format=ch)(m) #12
-	m = BatchNormalization(axis=axis)(m)
-	m = LeakyReLU()(m)
-	m = Flatten()(m)
-	out = Dense(100,activation='sigmoid')(m) #
 	return tf.keras.Model(inputs=inputLay, outputs=out)
