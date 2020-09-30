@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tensorflow.keras.layers import InputLayer, Flatten, Dense, Reshape, GlobalMaxPool1D, Reshape, LocallyConnected1D, Add, Activation, Conv2D, BatchNormalization, LeakyReLU, MaxPool2D, AveragePooling2D, Concatenate
+from tensorflow.keras.layers import InputLayer, Flatten, Dense, Reshape, GlobalMaxPool1D, Reshape, LocallyConnected2D, Add, Activation, Conv2D, BatchNormalization, LeakyReLU, MaxPool2D, AveragePooling2D, Concatenate, Lambda
 import tensorflow.keras.backend as K
 
 import kerastuner as kt
@@ -41,25 +41,27 @@ def buildModel0(hp):
 	numFilters = 48
 	activation = 'relu'
 
-
 	inputLay = tf.keras.Input(shape=(6,10,10))
 
-	c1 = Conv2D(filters=numFilters,kernel_size=1,activation=activation)(inputLay) # locally connected instead?
+	c1 = Conv2D(filters=numFilters,kernel_size=1,activation=activation, padding='same')(inputLay) # locally connected instead?
 
-	c3 = Conv2D(filters=numFilters, kernel_size=1, activation=activation)(inputLay)
-	c3 = Conv2D(filters=numFilters, kernel_size=3, activation=activation)(c3)
+	c3 = Conv2D(filters=numFilters, kernel_size=1, activation=activation, padding='same')(inputLay)
+	c3 = Conv2D(filters=numFilters, kernel_size=3, activation=activation, padding='same')(c3)
 
-	c5 = Conv2D(filters=numFilters, kernel_size=1, activation=activation)(inputLay)
-	c5 = Conv2D(filters=numFilters, kernel_size=5, activation=activation)(c3)
+	c5 = Conv2D(filters=numFilters, kernel_size=1, activation=activation, padding='same')(inputLay)
+	c5 = Conv2D(filters=numFilters, kernel_size=5, activation=activation, padding='same')(c3)
 
-	ap = AveragePooling2D(3, 1)(inputLay)
-	ap = Conv2D(filters=numFilters, kernel_size=1, activation=activation)(ap)
+	ap = AveragePooling2D(3, 1, padding='same')(inputLay) # what should we look at misses?
+	ap = Conv2D(filters=numFilters, kernel_size=1, activation=activation, padding='same')(ap)
 
-	conc = Concatenate(axis=1)([c1,c3,c5,ap])
-	c0 = Conv2D(filters=32,kernelSize=3, activation=activation)(conc)
+	conc0 = Concatenate(axis=1)([c1,c3,c5,ap])
+	c0 = Conv2D(filters=32,kernelSize=3, activation=activation, padding='same')(conc0)
+	
+	misses = Lambda(lambda x: K.expand_dims(x[:,0,:,:], axis=1))(inputLay)
+	conc1 = Concatenate(axis=1)([c0,misses])
 
-	f = Flatten()(c0)
-	out = Dense(100, activation='sigmoid')(f)
+	fc = LocallyConnected2D(1,20, activation='sigmoid', padding='same', implementation=2)(conc1) # no slower than regular
+	out = Flatten()(fc)
 	return tf.keras.Model(inputs=inputLay, outputs=out)
 
 def buildModel(hp):
