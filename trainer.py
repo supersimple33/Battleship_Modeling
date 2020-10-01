@@ -26,7 +26,7 @@ tf.keras.backend.set_image_data_format('channels_last')
 
 # MODEL TWEAKS
 NUM_GAMES = 3000
-EPSILON = 1.0
+EPSILON = 0.5
 LEARNING_RATE = 0.01
 MOMENTUM = 0.05
 CHANNEL_TYPE = "channels_last"
@@ -59,17 +59,17 @@ print(model.summary())
 ct = time.time()
 env = gym.make('battleship1-v1')
 
-@tf.function(experimental_compile=True) # Decoration is 10 fold faster
+@tf.function(experimental_compile=True) # Decoration is 10 fold faster, 
 def makeMove(obs,e,f):
 	# print("Traced with " + str(e))
 	if e > 0 and f == 1:
 		r = tf.random.uniform(shape=[],dtype=tf.float32)
 		if r < EPSILON:
-			aMoves = K.flatten(tf.reduce_sum(obs,axis=1) * -1)
-			mCount = 100 - tf.math.count_nonzero(aMoves,dtype=tf.int32)
+			moveVals = K.flatten(tf.reduce_sum(tf.abs(obs),axis=1) * -1)
+			mCount = 100 - tf.math.count_nonzero(moveVals,dtype=tf.int32) # could also use reduce sum use timeit to make a choice
 			L = float(mCount) * (r / e) # skips having to do another round of random
-			aMoves = tf.math.top_k(aMoves, k=mCount)
-			return aMoves[1][int(L)]
+			aMoves = tf.math.top_k(moveVals, k=mCount)[1]
+			return aMoves[int(L)]
 		else: #does not respect randomness
 			preds = model(obs, training=False)
 			return tf.math.top_k(preds, k=f)[1][0][f-1]
@@ -117,6 +117,8 @@ for epoch in range(0,NUM_GAMES):
 			move = makeMove(prevObs,EPSILON,f+1).numpy()
 			if move in slotsLeft:
 				break
+			else:
+				break
 		# move = randint(0,99)
 		obs, reward, done, out = env.step(move)
 		obs = vfunc(obs) # numpy may be faster
@@ -127,7 +129,6 @@ for epoch in range(0,NUM_GAMES):
 
 		observations.append(prevObs[0])
 		# expecteds.append(tf.convert_to_tensor(slotsLeft))
-		slotsLeft.remove(move)
 		expecteds.append(prevOut.astype(float))
 # 		expecteds.append(tf.cast(tf.convert_to_tensor(prevOut),dtype=tf.dtypes.float32))
 
@@ -137,6 +138,8 @@ for epoch in range(0,NUM_GAMES):
 		iterartions += 1
 		if done:
 			gameLength.update_state(env.counter)
+		else:
+			slotsLeft.remove(move)
 
 	# TRAINING
 
@@ -144,8 +147,8 @@ for epoch in range(0,NUM_GAMES):
 	# 	ret = trainGrads(tf.reshape(observations[i],shape=(1,10,10,6)),expecteds[i])
 	# 	pass
 
-	batch_size = 32
 	if len(observations) > 320:
+		batch_size = 32
 		shuffle(observations)
 		shuffle(expecteds)
 		observations = [observations[i:i + batch_size] for i in range(0, len(observations), batch_size)]
