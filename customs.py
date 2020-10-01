@@ -39,20 +39,20 @@ def buildModel0(hp):
 	# numFilters = hp.Int(name="num_filter", min_value=16, max_value=128, step=16, default=64)
 	# activation = hp.Choice(["relu, selu"],name='activation')
 	numFilters = 48
-	activation = 'relu'
+	activation = 'selu'
 
 	inputLay = tf.keras.Input(shape=(6,10,10))
 
 	c1 = Conv2D(filters=numFilters,kernel_size=1,activation=activation, padding='same')(inputLay) # locally connected instead?
 
 	c3 = Conv2D(filters=numFilters, kernel_size=1, activation=activation, padding='same')(inputLay)
-	c3 = Conv2D(filters=numFilters, kernel_size=3, activation=activation, padding='same')(c3)
+	c3 = Conv2D(filters=2*numFilters, kernel_size=3, activation=activation, padding='same')(c3)
 
 	c5 = Conv2D(filters=numFilters, kernel_size=1, activation=activation, padding='same')(inputLay)
-	c5 = Conv2D(filters=numFilters, kernel_size=5, activation=activation, padding='same')(c3)
+	c5 = Conv2D(filters=2*numFilters, kernel_size=5, activation=activation, padding='same')(c5)
 
 	ap = AveragePooling2D(3, 1, padding='same')(inputLay) # what should we look at misses?
-	ap = Conv2D(filters=numFilters, kernel_size=1, activation=activation, padding='same')(ap)
+	ap = Conv2D(filters=2*numFilters, kernel_size=1, activation=activation, padding='same')(ap)
 
 	conc0 = Concatenate(axis=1)([c1,c3,c5,ap])
 	c0 = Conv2D(filters=63, kernel_size=3, activation=activation, padding='same')(conc0)
