@@ -57,4 +57,8 @@ Training has been promsing producing upto 0.25 accuracy after less than four epo
 
 09/30 Finished with xception keras-tuning and was left with semi accurate models however loss was 0.6~0.7.
 Ultimately learned that I need a small model with inception and fewer layers.
-Created my own model with 
+Created my own model based on inception with 3 convolutional paths a Average Pooling which are conactenated along with one more convolution and the misses data which are then fully connected using locally connected.
+
+09/31
+Training with new model does ~20 moves w/o failures.
+Added in a tolerance to counteract popularity of early game states so model is more saturated.
