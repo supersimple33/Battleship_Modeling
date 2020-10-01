@@ -22,21 +22,22 @@ from random import randint, shuffle
 from customs import customAccuracy, buildModel0
 
 print(tf.__version__)
+tf.keras.backend.set_image_data_format('channels_last')
 
 # MODEL TWEAKS
 NUM_GAMES = 3000
-FILTERS = 64 # 64 because its cool
-EPSILON = 2.0 # Epsilon must start close to one or model training will scew incredibelly
+EPSILON = 1.0
 LEARNING_RATE = 0.01
 MOMENTUM = 0.05
 CHANNEL_TYPE = "channels_last"
+TOLERANCE = 1 # how many tries to permit
 AXIS = 1 if CHANNEL_TYPE == "channels_first" else -1
 # print(NUM_GAMES)
 # CONFIGURING THE MODEL
 
-model = buildModel0(None)
+# model = buildModel0(None)
 # model = oldBuildModel()
-# model = tf.keras.models.load_model('saved_model/my_model',compile=False,custom_objects={'customAccuracy':customAccuracy})
+model = tf.keras.models.load_model('saved_model/my_model',compile=False,custom_objects={'customAccuracy':customAccuracy})
 
 # lossFunc = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
 # optim = tf.keras.optimizers.SGD(lr=LEARNING_RATE, momentum = MOMENTUM) # optim = tf.keras.optimizers.SGD(lr=LEARNING_RATE, momentum = MOMENTUM)
@@ -58,21 +59,23 @@ print(model.summary())
 ct = time.time()
 env = gym.make('battleship1-v1')
 
-availibleMoves = tf.range(0,100, dtype=tf.int64)
 @tf.function(experimental_compile=True) # Decoration is 10 fold faster
-def makeMove(obs,e):
+def makeMove(obs,e,f):
 	# print("Traced with " + str(e))
-	if e > 0:
-		r = tf.random.uniform(shape=[],dtype=tf.dtypes.float16)
+	if e > 0 and f == 1:
+		r = tf.random.uniform(shape=[],dtype=tf.float32)
 		if r < EPSILON:
-			L = int(200 * r / e) # skips having to do another round of random
-			return availibleMoves[L]
-			# return tf.random.uniform(shape=[],maxval=100,dtype=tf.dtypes.int64)
-		else:
+			aMoves = K.flatten(tf.reduce_sum(obs,axis=1) * -1)
+			mCount = 100 - tf.math.count_nonzero(aMoves,dtype=tf.int32)
+			L = float(mCount) * (r / e) # skips having to do another round of random
+			aMoves = tf.math.top_k(aMoves, k=mCount)
+			return aMoves[1][int(L)]
+		else: #does not respect randomness
 			preds = model(obs, training=False)
-			return tf.argmax(preds, 1)[0]
-	preds = model(obs, training=False)
-	return tf.argmax(preds, 1)[0]
+			return tf.math.top_k(preds, k=f)[1][0][f-1]
+	else: #does not respect randomness
+		preds = model(obs, training=False)
+		return tf.math.top_k(preds, k=f)[1][0][f-1]
 
 # @tf.function(experimental_compile=True)
 def trainGrads(feature,expect):
@@ -96,6 +99,7 @@ observations = []
 expecteds = []
 vfunc = np.vectorize(lambda e: e.value[0])
 # sess = tf.Session()
+possMoves = np.arange(100)
 for epoch in range(0,NUM_GAMES):
 	prevObs, prevOut = env.reset()
 	# prevObs = np.copy(prevObs)
@@ -105,13 +109,15 @@ for epoch in range(0,NUM_GAMES):
 	prevObs = tf.convert_to_tensor([prevObs])
 
 	done = False
-
-	slotsLeft = np.ones(shape=100,dtype=np.float32)
+	pmov = list(possMoves)
+	slotsLeft = list(possMoves) # could also use
 	while not done:
 		# Could Accelerate this, however few tf methods, and a couple of outside methods
-		move = makeMove(prevObs,EPSILON).numpy()
+		for f in range(TOLERANCE):
+			move = makeMove(prevObs,EPSILON,f+1).numpy()
+			if move in slotsLeft:
+				break
 		# move = randint(0,99)
-		# print(move.numpy())
 		obs, reward, done, out = env.step(move)
 		obs = vfunc(obs) # numpy may be faster
 
@@ -119,9 +125,9 @@ for epoch in range(0,NUM_GAMES):
 			hits += 1
 		prevOut = vfunc(prevOut)
 
-		observations.append(prevObs)
+		observations.append(prevObs[0])
 		# expecteds.append(tf.convert_to_tensor(slotsLeft))
-		# slotsLeft[move] = 0
+		slotsLeft.remove(move)
 		expecteds.append(prevOut.astype(float))
 # 		expecteds.append(tf.cast(tf.convert_to_tensor(prevOut),dtype=tf.dtypes.float32))
 
