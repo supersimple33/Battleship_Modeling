@@ -11,43 +11,53 @@ from customs import customAccuracy
 
 from matplotlib import pyplot
 
+tf.keras.backend.set_image_data_format('channels_first')
+
 env = gym.make('battleship1-v1')
 env.reset()
 
 trained_model = tf.keras.models.load_model('saved_model/my_model.h5',compile=False,custom_objects={'customAccuracy':customAccuracy})
 trained_model.summary()
 
-# retrieve weights from the second hidden layer
-filters, biases = trained_model.layers[1].get_weights()
-# normalize filter values to 0-1 so we can visualize them
-f_min, f_max = filters.min(), filters.max()
-filters = (filters - f_min) / (f_max - f_min)
-# plot first few filters
-n_filters, ix = 6, 1
-for i in range(n_filters):
-	# get the filter
-	f = filters[:, :, :, i]
-	# plot each channel separately
-	for j in range(3):
-		# specify subplot and turn of axis
-		ax = pyplot.subplot(n_filters, 3, ix)
-		ax.set_xticks([])
-		ax.set_yticks([])
-		# plot filter channel in grayscale
-		pyplot.imshow(f[:, :, j], cmap='gray')
-		ix += 1
-# show the figure
-pyplot.show()
+def displayKernel(lay):
+	pyplot.close()
+	# retrieve weights from the second hidden layer
+	filters, biases = trained_model.layers[lay].get_weights()
+	# normalize filter values to 0-1 so we can visualize them
+	f_min, f_max = filters.min(), filters.max()
+	filters = (filters - f_min) / (f_max - f_min)
+	# plot first few filters
+	n_filters, ix = 7, 1
+	for i in range(n_filters):
+		# get the filter
+		f = filters[:, :, :, i]
+		# plot each channel separately
+		for j in range(6):
+			# specify subplot and turn of axis
+			ax = pyplot.subplot(n_filters, 6, ix)
+			ax.set_xticks([])
+			ax.set_yticks([])
+			# plot filter channel in grayscale
+			pyplot.imshow(f[:, :, j], cmap='gray')
+			ix += 1
+	# show the figure
+	pyplot.show()
+
+def heatMap(y_preds):
+	pyplot.close()
+	y_preds = np.reshape(y_preds, (10,10))
+	# ax = pyplot.subplot(1,1,1)
+	pyplot.imshow(y_preds, cmap='gray')
+	pyplot.show()
 
 scores = []
 choices = []
-
 for each_game in range(1):
 	score = 0
 	prev_obs, _ = env.reset()
 	prev_obs = [[[x.value[0] for x in y] for y in c] for c in prev_obs] # redo timeit with numpy
-	prev_obs = tf.reshape(tf.transpose(tf.convert_to_tensor(prev_obs)),shape=(1,10,10,6)) # ONLY NEEDED FOR CPUS
-
+	prev_obs = tf.convert_to_tensor([prev_obs])
+	prev_obs = tf.reshape(tf.transpose(prev_obs[0]),shape=(1,10,10,6)) # ONLY NEEDED FOR CPUS
 	prev_action = -1
 	for step_index in range(500):
 		# env.render()
@@ -56,13 +66,12 @@ for each_game in range(1):
 		# 	action = 50
 		# elif step_index < 50:
 		# 	action = step_index
-		if False:
-			pass
-		else:
-			logits = trained_model.predict_step(prev_obs)[0]
-			# print(logits)
-			action = tf.argmax(logits,-1).numpy()
-			print(action, logits[action].numpy(), tf.nn.softmax(logits)[action].numpy())
+
+		logits = trained_model(tf.cast(prev_obs, tf.float32), training=False)[0]
+		heatMap(logits.numpy())
+# 		raise
+		action = tf.argmax(logits,-1).numpy()
+		print(action, logits[action].numpy(), tf.nn.softmax(logits)[action].numpy())
 		
 		# print(action, prev_obs)
 
@@ -72,7 +81,8 @@ for each_game in range(1):
 
 		prev_obs = new_observation
 		prev_obs = [[[x.value[0] for x in y] for y in c] for c in prev_obs] # redo timeit with numpy
-		prev_obs = tf.reshape(tf.transpose(tf.convert_to_tensor(prev_obs)),shape=(1,10,10,6)) # ONLY NEEDED FOR CPUS
+		prev_obs = tf.convert_to_tensor([prev_obs])
+		prev_obs = tf.reshape(tf.transpose(prev_obs[0]),shape=(1,10,10,6)) # ONLY NEEDED FOR CPUS
 
 		prev_action = action
 		if done:
@@ -85,3 +95,4 @@ for each_game in range(1):
 print(scores)
 print('Average Score:', sum(scores)/len(scores))
 print('choice 1:{}  choice 0:{}'.format(choices.count(1)/len(choices),choices.count(0)/len(choices)))
+
