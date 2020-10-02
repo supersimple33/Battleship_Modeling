@@ -9,10 +9,35 @@ tensorflow.keras.losses.custom_loss = tf.nn.sigmoid_cross_entropy_with_logits
 
 from customs import customAccuracy
 
+from matplotlib import pyplot
+
 env = gym.make('battleship1-v1')
 env.reset()
 
-trained_model = tf.keras.models.load_model('saved_model/test',compile=False,custom_objects={'customAccuracy':customAccuracy})
+trained_model = tf.keras.models.load_model('saved_model/my_model.h5',compile=False,custom_objects={'customAccuracy':customAccuracy})
+trained_model.summary()
+
+# retrieve weights from the second hidden layer
+filters, biases = trained_model.layers[1].get_weights()
+# normalize filter values to 0-1 so we can visualize them
+f_min, f_max = filters.min(), filters.max()
+filters = (filters - f_min) / (f_max - f_min)
+# plot first few filters
+n_filters, ix = 6, 1
+for i in range(n_filters):
+	# get the filter
+	f = filters[:, :, :, i]
+	# plot each channel separately
+	for j in range(3):
+		# specify subplot and turn of axis
+		ax = pyplot.subplot(n_filters, 3, ix)
+		ax.set_xticks([])
+		ax.set_yticks([])
+		# plot filter channel in grayscale
+		pyplot.imshow(f[:, :, j], cmap='gray')
+		ix += 1
+# show the figure
+pyplot.show()
 
 scores = []
 choices = []
