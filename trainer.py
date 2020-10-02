@@ -117,8 +117,6 @@ for epoch in range(0,NUM_GAMES):
 			move = makeMove(prevObs,EPSILON,f+1).numpy()
 			if move in slotsLeft:
 				break
-			else:
-				break
 		# move = randint(0,99)
 		obs, reward, done, out = env.step(move)
 		obs = vfunc(obs) # numpy may be faster
