@@ -19,7 +19,11 @@ env.reset()
 trained_model = tf.keras.models.load_model('saved_model/my_model.h5',compile=False,custom_objects={'customAccuracy':customAccuracy})
 trained_model.summary()
 
-def displayKernel(lay):
+def displayKernel(lay, ch=None):
+	if ch is None:
+		chRange = range(6)
+	else:
+		chRange = range(ch[0], ch[1])
 	pyplot.close()
 	# retrieve weights from the second hidden layer
 	filters, biases = trained_model.layers[lay].get_weights()
@@ -32,9 +36,9 @@ def displayKernel(lay):
 		# get the filter
 		f = filters[:, :, :, i]
 		# plot each channel separately
-		for j in range(6):
+		for j in chRange:
 			# specify subplot and turn of axis
-			ax = pyplot.subplot(n_filters, 6, ix)
+			ax = pyplot.subplot(n_filters, ch[1]-ch[0], ix)
 			ax.set_xticks([])
 			ax.set_yticks([])
 			# plot filter channel in grayscale
@@ -43,11 +47,15 @@ def displayKernel(lay):
 	# show the figure
 	pyplot.show()
 
-def heatMap(y_preds):
-	pyplot.close()
+def heatMap(y_preds, state=None):
+# 	pyplot.close()
 	y_preds = np.reshape(y_preds, (10,10))
-	# ax = pyplot.subplot(1,1,1)
+	ax = pyplot.subplot(1,2,1)
 	pyplot.imshow(y_preds, cmap='gray')
+	if state is not None:
+		bx = pyplot.subplot(1,2,2)
+		x = [[(x.value[0] if x.value[1] != "!M!" else -2) for x in y] for y in state]
+		pyplot.imshow(x, cmap='gray')
 	pyplot.show()
 
 scores = []
@@ -68,7 +76,7 @@ for each_game in range(1):
 		# 	action = step_index
 
 		logits = trained_model(tf.cast(prev_obs, tf.float32), training=False)[0]
-		heatMap(logits.numpy())
+		heatMap(logits.numpy(), env.state)
 # 		raise
 		action = tf.argmax(logits,-1).numpy()
 		print(action, logits[action].numpy(), tf.nn.softmax(logits)[action].numpy())
@@ -88,11 +96,8 @@ for each_game in range(1):
 		if done:
 			scores.append(env.counter)
 			break
-
-	env.reset()
 	scores.append(score)
 
 print(scores)
 print('Average Score:', sum(scores)/len(scores))
 print('choice 1:{}  choice 0:{}'.format(choices.count(1)/len(choices),choices.count(0)/len(choices)))
-
