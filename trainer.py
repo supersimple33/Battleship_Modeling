@@ -4,8 +4,6 @@ import tensorflow as tf
 from tensorflow.keras.layers import InputLayer, Conv2D, BatchNormalization, LeakyReLU, Add, Flatten, Dense, Concatenate, Dot, Reshape, Dropout
 import tensorflow.keras.backend as K
 print(tf.__version__)
-
-import tensorflow.keras.backend as K
 # tf.autograph.set_verbosity(10,alsologtostdout=True)
 
 import numpy as np
@@ -19,15 +17,15 @@ import time
 from random import randint, shuffle
 # from collections import deques
 
-from customs import customAccuracy, buildModel0
+from customs import customAccuracy, buildModel
 
 print(tf.__version__)
-tf.keras.backend.set_image_data_format('channels_last')
+tf.keras.backend.set_image_data_format('channels_first')
 
 # MODEL TWEAKS
-NUM_GAMES = 3000
-EPSILON = 0.5
-LEARNING_RATE = 0.01
+NUM_GAMES = 6000
+EPSILON = 1.0
+LEARNING_RATE = 0.0001
 MOMENTUM = 0.05
 CHANNEL_TYPE = "channels_last"
 TOLERANCE = 1 # how many tries to permit
@@ -35,9 +33,12 @@ AXIS = 1 if CHANNEL_TYPE == "channels_first" else -1
 # print(NUM_GAMES)
 # CONFIGURING THE MODEL
 
-# model = buildModel0(None)
+model = buildModel()
 # model = oldBuildModel()
-model = tf.keras.models.load_model('saved_model/my_model',compile=False,custom_objects={'customAccuracy':customAccuracy})
+# model = tf.keras.models.load_model('saved_model/my_model10.h5',compile=False,custom_objects={'customAccuracy':customAccuracy})
+# for layer in model.layers:
+# 	layer.trainable = True
+# model.layers[-2].trainable = False # Switch between these two
 
 # lossFunc = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
 # optim = tf.keras.optimizers.SGD(lr=LEARNING_RATE, momentum = MOMENTUM) # optim = tf.keras.optimizers.SGD(lr=LEARNING_RATE, momentum = MOMENTUM)
@@ -54,50 +55,53 @@ summary_writer = tf.summary.create_file_writer('logs')
 print(model.summary())
 # model.load_weights('saved_model/checkpoints/cp')
 
-
 # Globals
 ct = time.time()
 env = gym.make('battleship1-v1')
 
-@tf.function(experimental_compile=True) # Decoration is 10 fold faster, 
+@tf.function() # Decoration is 10 fold faster, 
 def makeMove(obs,e,f):
+	print(e, f)
 	# print("Traced with " + str(e))
 	if e > 0 and f == 1:
 		r = tf.random.uniform(shape=[],dtype=tf.float32)
-		if r < EPSILON:
+		if r < e:
 			moveVals = K.flatten(tf.reduce_sum(tf.abs(obs),axis=1) * -1)
 			mCount = 100 - tf.math.count_nonzero(moveVals,dtype=tf.int32) # could also use reduce sum use timeit to make a choice
 			L = float(mCount) * (r / e) # skips having to do another round of random
 			aMoves = tf.math.top_k(moveVals, k=mCount)[1]
 			return aMoves[int(L)]
 		else: #does not respect randomness
+# 			obs = tf.cast(obs, tf.float32)
 			preds = model(obs, training=False)
-			return tf.math.top_k(preds, k=f)[1][0][f-1]
+			return tf.argmax(preds, 1)[0]
+	elif f == 1:
+		preds = model(obs, training=False)
+		return tf.argmax(preds, 1)[0]
 	else: #does not respect randomness
+# 		obs = tf.cast(obs, tf.float32)
 		preds = model(obs, training=False)
 		return tf.math.top_k(preds, k=f)[1][0][f-1]
 
-# @tf.function(experimental_compile=True)
-def trainGrads(feature,expect):
-	with tf.GradientTape() as tape:
-		# predictions = self.model(features)
-		preds = model(feature,training=True)
-		# loss = customLoss(expect, preds[0])
-		# loss = lossFunc(expect, predictions[0])
-		loss = f1_loss(expect, preds[0])
-	gradients = tape.gradient(loss, model.trainable_variables)
-	optim.apply_gradients(zip(gradients, model.trainable_variables))
-	error.update_state(expect, preds[0])
-	accuracy.update_state(expect, preds)
-	lossAvg.update_state(loss)
-	return gradients
+def singleShipSight(e, match):
+	if '2' in match.value[1]:
+		return 1 if '2' in e.value[1] else 0
+	if 'S' in match.value[1]:
+		return 1 if 'S' in e.value[1] else 0
+	if 'C' in match.value[1]:
+		return 1 if 'C' in e.value[1] else 0
+	if '4' in match.value[1]:
+		return 1 if '4' in e.value[1] else 0
+	if '5' in match.value[1]:
+		return 1 if '5' in e.value[1] else 0
+	return 0
 
-# def singleStepConv():
 hits = 0
 iterartions = 0
 observations = []
 expecteds = []
 vfunc = np.vectorize(lambda e: e.value[0])
+vfuncSingleShip = np.vectorize(singleShipSight)
 # sess = tf.Session()
 possMoves = np.arange(100)
 for epoch in range(0,NUM_GAMES):
@@ -111,6 +115,7 @@ for epoch in range(0,NUM_GAMES):
 	done = False
 	pmov = list(possMoves)
 	slotsLeft = list(possMoves) # could also use
+	prevReward = False
 	while not done:
 		# Could Accelerate this, however few tf methods, and a couple of outside methods
 		for f in range(TOLERANCE):
@@ -119,15 +124,23 @@ for epoch in range(0,NUM_GAMES):
 				break
 		# move = randint(0,99)
 		obs, reward, done, out = env.step(move)
-		obs = vfunc(obs) # numpy may be faster
+		obs = vfunc(obs)
 
+# 		prevOut = vfunc(prevOut)
 		if reward:
 			hits += 1
+# 		if prevReward:
+# 			po = vfuncSingleShip(prevOut, env.state[move//10][move%10])
+# 			if np.count_nonzero(prevOut):
 		prevOut = vfunc(prevOut)
+# 			observations.append(prevObs[0])
+# 			expecteds.append(po)
+# 		prevReward = reward
 
+# 		if done:
 		observations.append(prevObs[0])
-		# expecteds.append(tf.convert_to_tensor(slotsLeft))
-		expecteds.append(prevOut.astype(float))
+		expecteds.append(prevOut)
+# 		expecteds.append(tf.convert_to_tensor(slotsLeft))
 # 		expecteds.append(tf.cast(tf.convert_to_tensor(prevOut),dtype=tf.dtypes.float32))
 
 		# obs = np.moveaxis(obs,0,-1) # CPU ONLY
@@ -145,7 +158,7 @@ for epoch in range(0,NUM_GAMES):
 	# 	ret = trainGrads(tf.reshape(observations[i],shape=(1,10,10,6)),expecteds[i])
 	# 	pass
 
-	if len(observations) > 320:
+	if len(observations) > 1024:
 		batch_size = 32
 		shuffle(observations)
 		shuffle(expecteds)
@@ -177,11 +190,11 @@ for epoch in range(0,NUM_GAMES):
 		lossAvg.reset_states()
 		hits = 0
 		iterartions = 0
-		if EPSILON > 0.06:
-			EPSILON -= 0.02
-		else:
-			EPSILON /= 1.75
-		# model.save_weights('saved_model/checkpoints/cp')
+# 		if EPSILON > 0.06:
+# 			EPSILON -= 0.02
+# 		else:
+# 		EPSILON /= 1.75
+# 		model.save_weights('saved_model/checkpoints/cp')
 		ct = time.time()
 
 # observationStack = tf.stack(observations)
@@ -205,5 +218,5 @@ for epoch in range(0,NUM_GAMES):
 # tf.data.experimental.save(dataset=dataset,path='saved_data',compression='GZIP')
 # with tf.device('/cpu:0'):
 # 	model.fit(x=observationStack,y=expectedStack,epochs=10,verbose=2,callbacks=[tensorboard_callback],use_multiprocessing=True) # multiprocessing?
-model.save('saved_model/my_model')
+model.save('saved_model/my_model10.h5')
 print("Model Saved")
