@@ -7,27 +7,27 @@ import numpy as np
 
 # indList = ("|-|","!M!","(2)","(S)","(C)","(4)","(5)",3"x2x","xSx","xCx","x4x","x5x","|2|","|S|","|C|","|4|","|5|","HiddenCruiser")
 class Space(enum.Enum):
-	Empty = 0,"|-|" #_
+	Empty = 0.0,"|-|" #_
 
-	Miss = 1,"!M!" #m
+	Miss = 1.0,"!M!" #m
 	
-	HitPTwo = 1,"(2)"
-	HitPSub = 1,"(S)"
-	HitPCruiser = 1,"(C)"
-	HitPFour = 1,"(4)"
-	HitPFive = 1,"(5)"
+	HitPTwo = 1.0,"(2)"
+	HitPSub = 1.0,"(S)"
+	HitPCruiser = 1.0,"(C)"
+	HitPFour = 1.0,"(4)"
+	HitPFive = 1.0,"(5)"
 
-	SunkTwo = -1,"x2x"
-	SunkSub = -1,"xSx"
-	SunkCruiser = -1,"xCx"
-	SunkFour = -1,"x4x"
-	SunkFive = -1,"x5x"
+	SunkTwo = -1.0,"x2x"
+	SunkSub = -1.0,"xSx"
+	SunkCruiser = -1.0,"xCx"
+	SunkFour = -1.0,"x4x"
+	SunkFive = -1.0,"x5x"
 
-	HiddenTwo = 1,"|2|" # Need to update these values likely 1
-	HiddenSub = 1,"|S|"
-	HiddenCruiser = 1,"|C|"
-	HiddenFour = 1,"|4|"
-	HiddenFive = 1,"|5|"
+	HiddenTwo = 1.0,"|2|" # Need to update these values likely 1
+	HiddenSub = 1.0,"|S|"
+	HiddenCruiser = 1.0,"|C|"
+	HiddenFour = 1.0,"|4|"
+	HiddenFive = 1.0,"|5|"
 
 def addShip(state, ship, len_, x, y, d):
 		r = range(0, len_)
@@ -58,24 +58,26 @@ def addShip(state, ship, len_, x, y, d):
 				state[y][x + j] = ship
 		return True
 
+emptyStateRef = np.full(shape=(10,10),fill_value=Space.Empty)
+hidSpaceRef = [Space.HiddenFive, Space.HiddenFour, Space.HiddenCruiser, Space.HiddenSub, Space.HiddenTwo]
+shipSpaceLength = [5, 4, 3, 3, 2]
 def setupShips(np_random):
 		i = 0
-		# state = [[Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10, [Space.Empty]*10]
-		state = np.full(shape=(10,10),fill_value=Space.Empty)
-		slots = np.arange(100).tolist()
+		state = np.copy(emptyStateRef)
+		state.fill(Space.Empty)
+		slots = list(range(100))
 		while (i < 5): #refactor out
-			len_ = [5, 4, 3, 3, 2][i]#s
-			ship = [Space.HiddenFive, Space.HiddenFour, Space.HiddenCruiser, Space.HiddenSub, Space.HiddenTwo][i]#s
+			len_ = shipSpaceLength[i]
+			ship = hidSpaceRef[i]
 			slot = np_random.choice(slots)
 			x = slot % 10
 			y = slot // 10
 			d = np_random.randint(4)
+# 			print(i) #345 348 micro sec
 			if not ((d == 0 and (y%10) - len_ >= 0) or (d == 1 and (x%10) - len_ >= 0) or (d == 2 and (y%10) + len_ <= 9) or (d == 3 and (x%10) + len_ <= 9)):
 				continue
 			elif (not addShip(state, ship, len_, x, y, d)): # could we add the ship, if not try again with new random coordinate
 				continue
-			slots.remove(slot)
-			slots.remove((slot + (d-2)) if d%2==1 else (slot + 10*(d-1)))
 			i += 1
 		return state
 
@@ -93,12 +95,13 @@ class Battleship1(gym.Env):
 		])
 		self.observation_space = spaces.Tuple((missesChannel,regChannel,regChannel,regChannel,regChannel,regChannel))
 		self.seed()
+		self.hidState = np.full(shape=(6,10,10),fill_value=Space.Empty)
 
 		self.reset()
 
 		# Action and observations spaces
 
-	def _searchAndReplace(self, x, y, len_, search, replace,c):
+	def _searchAndReplace(self, x, y, len_, search, replace, c):
 		self.state[y][x] = replace
 		direc = (-1,1)
 		for d in direc:
@@ -200,14 +203,14 @@ class Battleship1(gym.Env):
 		if win:
 			self.done = True
 			# print("Game over: ", self.counter, " moves.", sep = "", end = "\n")
-			self.reward = 100 - self.counter
+# 			self.reward = 100 - self.counter
 		return [self.hidState, self.reward, self.done, self.expectedShots]
 
 	def reset(self):
 		self.state = setupShips(self.np_random)
-		self.hidState = np.full(shape=(6,10,10),fill_value=Space.Empty)
+		self.hidState.fill(Space.Empty)
 		self.expectedShots = np.copy(np.reshape(self.state, (100)))
-		
+
 		self.hitsOnShips = [0, 0, 0, 0, 0]
 
 		self.counter = 0
@@ -232,4 +235,6 @@ class Battleship1(gym.Env):
 		self.np_random, seed = utils.seeding.np_random()
 		return [seed]
 
-e = Battleship1()
+# full game 734 µs ± 27 µs per loop (mean ± std. dev. of 20 runs, 1000 loops each)
+
+# 454 µs ± 20.4 µs per loop (mean ± std. dev. of 20 runs, 1000 loops each)
