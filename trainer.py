@@ -14,16 +14,18 @@ import gym_battleship1
 import builtins
 # import timeit # DEBUG Only
 import time
-from random import randint, shuffle
+from random import random, shuffle, randrange
 # from collections import deques
 
 from customs import customAccuracy, buildModel
+
+from copy import copy
 
 print(tf.__version__)
 tf.keras.backend.set_image_data_format('channels_first')
 
 # MODEL TWEAKS
-NUM_GAMES = 6000
+NUM_GAMES = 1200
 EPSILON = 1.0
 LEARNING_RATE = 0.0001
 MOMENTUM = 0.05
@@ -34,22 +36,18 @@ AXIS = 1 if CHANNEL_TYPE == "channels_first" else -1
 # CONFIGURING THE MODEL
 
 model = buildModel()
-# model = oldBuildModel()
 # model = tf.keras.models.load_model('saved_model/my_model10.h5',compile=False,custom_objects={'customAccuracy':customAccuracy})
 # for layer in model.layers:
 # 	layer.trainable = True
 # model.layers[-2].trainable = False # Switch between these two
 
-# lossFunc = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
-# optim = tf.keras.optimizers.SGD(lr=LEARNING_RATE, momentum = MOMENTUM) # optim = tf.keras.optimizers.SGD(lr=LEARNING_RATE, momentum = MOMENTUM)
 optim = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
 error = tf.keras.metrics.MeanAbsoluteError()
 lossAvg = tf.keras.metrics.Mean()
-# error = tf.keras.metrics.Mean()
-# accuracy = tf.keras.metrics.CategoricalAccuracy()
 accuracy = tf.keras.metrics.Mean()
 gameLength = tf.keras.metrics.Mean()
 model.compile(optimizer=optim,loss='binary_crossentropy',metrics=[error,customAccuracy])
+
 summary_writer = tf.summary.create_file_writer('logs')
 # tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir='logs', histogram_freq=1)
 print(model.summary())
@@ -60,26 +58,12 @@ ct = time.time()
 env = gym.make('battleship1-v1')
 
 @tf.function() # Decoration is 10 fold faster, 
-def makeMove(obs,e,f):
+def makeMove(obs,f):
 	print(e, f)
-	# print("Traced with " + str(e))
-	if e > 0 and f == 1:
-		r = tf.random.uniform(shape=[],dtype=tf.float32)
-		if r < e:
-			moveVals = K.flatten(tf.reduce_sum(tf.abs(obs),axis=1) * -1)
-			mCount = 100 - tf.math.count_nonzero(moveVals,dtype=tf.int32) # could also use reduce sum use timeit to make a choice
-			L = float(mCount) * (r / e) # skips having to do another round of random
-			aMoves = tf.math.top_k(moveVals, k=mCount)[1]
-			return aMoves[int(L)]
-		else: #does not respect randomness
-# 			obs = tf.cast(obs, tf.float32)
-			preds = model(obs, training=False)
-			return tf.argmax(preds, 1)[0]
-	elif f == 1:
+	if f == 1:
 		preds = model(obs, training=False)
-		return tf.argmax(preds, 1)[0]
-	else: #does not respect randomness
-# 		obs = tf.cast(obs, tf.float32)
+		return tf.argmax(preds, 1, output_type=tf.int32)[0]
+	else:
 		preds = model(obs, training=False)
 		return tf.math.top_k(preds, k=f)[1][0][f-1]
 
@@ -103,7 +87,9 @@ expecteds = []
 vfunc = np.vectorize(lambda e: e.value[0])
 vfuncSingleShip = np.vectorize(singleShipSight)
 # sess = tf.Session()
-possMoves = np.arange(100)
+possMoves = list(range(100))
+if EPSILON >= 1.0:
+	fullyRandom = np.random.rand(NUM_GAMES,100).argsort(1)[:,:100]
 for epoch in range(0,NUM_GAMES):
 	prevObs, prevOut = env.reset()
 	# prevObs = np.copy(prevObs)
@@ -113,16 +99,19 @@ for epoch in range(0,NUM_GAMES):
 	prevObs = tf.convert_to_tensor([prevObs])
 
 	done = False
-	pmov = list(possMoves)
-	slotsLeft = list(possMoves) # could also use
+	slotsLeft = copy.copy(possMoves)
 	prevReward = False
 	while not done:
 		# Could Accelerate this, however few tf methods, and a couple of outside methods
-		for f in range(TOLERANCE):
-			move = makeMove(prevObs,EPSILON,f+1).numpy()
-			if move in slotsLeft:
-				break
-		# move = randint(0,99)
+		if EPSILON >= 1.0:
+			move = fullyRandom[epoch, env.counter]
+		elif random() < EPSILON:
+			pass
+		else:
+			for f in range(TOLERANCE):
+				move = makeMove(prevObs,f+1).numpy()
+				if move in slotsLeft:
+					break
 		obs, reward, done, out = env.step(move)
 		obs = vfunc(obs)
 
@@ -149,8 +138,8 @@ for epoch in range(0,NUM_GAMES):
 		iterartions += 1
 		if done:
 			gameLength.update_state(env.counter)
-		else:
-			slotsLeft.remove(move)
+# 		else:
+# 			slotsLeft.remove(move)
 
 	# TRAINING
 
@@ -159,6 +148,7 @@ for epoch in range(0,NUM_GAMES):
 	# 	pass
 
 	if len(observations) > 1024:
+# 		rt = time.time()
 		batch_size = 32
 		shuffle(observations)
 		shuffle(expecteds)
@@ -169,12 +159,13 @@ for epoch in range(0,NUM_GAMES):
 			obsBatch = tf.stack(observations[b])
 			expBatch = tf.stack(expecteds[b])
 
-			ret = model.train_on_batch(x=obsBatch,y=expBatch,reset_metrics=False,return_dict=True)
-			lossAvg.update_state(ret['loss'])
-			accuracy.update_state(ret['customAccuracy'])
+			ret = model.train_on_batch(x=obsBatch,y=expBatch,reset_metrics=False, return_dict=True)
+			lossAvg.update_state(ret[0])
+			accuracy.update_state(ret[2])
 
 		observations = []
 		expecteds = []
+# 		print(round(time.time() - rt, 3))
 
 	if (epoch+1) % (NUM_GAMES // 30) == 0:
 		# with summary_writer.as_default():
@@ -194,7 +185,7 @@ for epoch in range(0,NUM_GAMES):
 # 			EPSILON -= 0.02
 # 		else:
 # 		EPSILON /= 1.75
-# 		model.save_weights('saved_model/checkpoints/cp')
+		model.save_weights('saved_model/checkpoints/cp')
 		ct = time.time()
 
 # observationStack = tf.stack(observations)
@@ -217,6 +208,6 @@ for epoch in range(0,NUM_GAMES):
 # dataset = dataset.shuffle(dataset.__len__(), reshuffle_each_iteration=True)
 # tf.data.experimental.save(dataset=dataset,path='saved_data',compression='GZIP')
 # with tf.device('/cpu:0'):
-# 	model.fit(x=observationStack,y=expectedStack,epochs=10,verbose=2,callbacks=[tensorboard_callback],use_multiprocessing=True) # multiprocessing?
+# 	model.fit(x=observationStack,y=expectezdStack,epochs=10,verbose=2,callbacks=[tensorboard_callback],use_multiprocessing=True) # multiprocessing?
 model.save('saved_model/my_model10.h5')
 print("Model Saved")
