@@ -9,7 +9,7 @@ import numpy as np
 class Space(enum.Enum):
 	Empty = 0.0,"|-|" #_
 
-	Miss = 1.0,"!M!" #m
+	Miss = -1.0,"!M!" #m
 	
 	HitPTwo = 1.0,"(2)"
 	HitPSub = 1.0,"(S)"
@@ -17,11 +17,11 @@ class Space(enum.Enum):
 	HitPFour = 1.0,"(4)"
 	HitPFive = 1.0,"(5)"
 
-	SunkTwo = -1.0,"x2x"
-	SunkSub = -1.0,"xSx"
-	SunkCruiser = -1.0,"xCx"
-	SunkFour = -1.0,"x4x"
-	SunkFive = -1.0,"x5x"
+	SunkTwo = 0.2,"x2x" # ship values, should every ship get its own channel
+	SunkSub = 0.4,"xSx"
+	SunkCruiser = 0.6,"xCx"
+	SunkFour = 0.8,"x4x"
+	SunkFive = 1.0,"x5x"
 
 	HiddenTwo = 1.0,"|2|" # Need to update these values likely 1
 	HiddenSub = 1.0,"|S|"
@@ -95,7 +95,7 @@ class Battleship1(gym.Env):
 		])
 		self.observation_space = spaces.Tuple((missesChannel,regChannel,regChannel,regChannel,regChannel,regChannel))
 		self.seed()
-		self.hidState = np.full(shape=(6,10,10),fill_value=Space.Empty)
+		self.hidState = np.full(shape=(2,10,10),fill_value=Space.Empty)
 
 		self.reset()
 
@@ -157,7 +157,7 @@ class Battleship1(gym.Env):
 				self.reward = True
 				self.expectedShots[target] = Space.Empty
 				self.state[y][x] = Space.HitPTwo
-				self.hidState[1][y][x] = Space.HitPTwo
+				self.hidState[0][y][x] = Space.HitPTwo
 				self.hitsOnShips[4] = self.hitsOnShips[4] + 1
 				if self.hitsOnShips[4] == 2:
 					self._searchAndReplace(x, y, self.hitsOnShips[4], Space.HitPTwo, Space.SunkTwo, 1)
@@ -165,34 +165,34 @@ class Battleship1(gym.Env):
 				self.reward = True
 				self.expectedShots[target] = Space.Empty
 				self.state[y][x] = Space.HitPSub
-				self.hidState[2][y][x] = Space.HitPSub
+				self.hidState[0][y][x] = Space.HitPSub
 				self.hitsOnShips[3] = self.hitsOnShips[3] + 1
 				if self.hitsOnShips[3] == 3:
-					self._searchAndReplace(x, y, self.hitsOnShips[3], Space.HitPSub, Space.SunkSub, 2)
+					self._searchAndReplace(x, y, self.hitsOnShips[3], Space.HitPSub, Space.SunkSub, 1)
 			elif targetSpace == Space.HiddenCruiser:
 				self.reward = True
 				self.expectedShots[target] = Space.Empty
 				self.state[y][x] = Space.HitPCruiser
-				self.hidState[3][y][x] = Space.HitPCruiser
+				self.hidState[0][y][x] = Space.HitPCruiser
 				self.hitsOnShips[2] = self.hitsOnShips[2] + 1
 				if self.hitsOnShips[2] == 3:
-					self._searchAndReplace(x, y, self.hitsOnShips[2], Space.HitPCruiser, Space.SunkCruiser, 3)
+					self._searchAndReplace(x, y, self.hitsOnShips[2], Space.HitPCruiser, Space.SunkCruiser, 1)
 			elif targetSpace == Space.HiddenFour:
 				self.reward = True
 				self.expectedShots[target] = Space.Empty
 				self.state[y][x] = Space.HitPFour
-				self.hidState[4][y][x] = Space.HitPFour
+				self.hidState[0][y][x] = Space.HitPFour
 				self.hitsOnShips[1] = self.hitsOnShips[1] + 1
 				if self.hitsOnShips[1] == 4:
-					self._searchAndReplace(x, y, self.hitsOnShips[1], Space.HitPFour, Space.SunkFour, 4)
+					self._searchAndReplace(x, y, self.hitsOnShips[1], Space.HitPFour, Space.SunkFour, 1)
 			elif targetSpace == Space.HiddenFive:
 				self.reward = True
 				self.expectedShots[target] = Space.Empty
 				self.state[y][x] = Space.HitPFive
-				self.hidState[5][y][x] = Space.HitPFive
+				self.hidState[0][y][x] = Space.HitPFive
 				self.hitsOnShips[0] = self.hitsOnShips[0] + 1
 				if self.hitsOnShips[0] == 5:
-					self._searchAndReplace(x, y, self.hitsOnShips[0], Space.HitPFive, Space.SunkFive, 5)
+					self._searchAndReplace(x, y, self.hitsOnShips[0], Space.HitPFive, Space.SunkFive, 1)
 			else:
 				# print("Misfire")
 				self.done = True
@@ -203,7 +203,7 @@ class Battleship1(gym.Env):
 		if win:
 			self.done = True
 			# print("Game over: ", self.counter, " moves.", sep = "", end = "\n")
-# 			self.reward = 100 - self.counter
+			# self.reward = 100 - self.counter
 		return [self.hidState, self.reward, self.done, self.expectedShots]
 
 	def reset(self):
