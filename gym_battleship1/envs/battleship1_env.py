@@ -103,6 +103,8 @@ class Battleship1(gym.Env):
 
 	def _searchAndReplace(self, x, y, len_, search, replace, c):
 		self.state[y][x] = replace
+		self.hidState[c][y][x] = replace
+		self.hidState[0][y][x] = Space.Empty
 		direc = (-1,1)
 		for d in direc:
 			if (y+d) > 9 or (y+d) < 0:
@@ -112,12 +114,14 @@ class Battleship1(gym.Env):
 			if self.state[y + d][x] == search:
 				self.state[y + d][x] = replace
 				self.hidState[c][y + d][x] = replace
+				self.hidState[0][y + d][x] = Space.Empty
 				len_ -= 1
 				for eLow in range(1,len_):
 					e = eLow + 1
 					if self.state[y + (d * e)][x] == search:
 						self.state[y + (d * e)][x] = replace
 						self.hidState[c][y + (d * e)][x] = replace
+						self.hidState[0][y + (d * e)][x] = Space.Empty
 						len_ -= 1
 					else:
 						break
@@ -129,12 +133,14 @@ class Battleship1(gym.Env):
 			if self.state[y][x + d] == search:
 				self.state[y][x + d] = replace
 				self.hidState[c][y][x + d] = replace
+				self.hidState[0][y][x + d] = Space.Empty
 				len_ -= 1
 				for eLow in range(1,len_):
 					e = eLow + 1
 					if self.state[y][x + (d*e)] == search:
 						self.state[y][x + (d*e)] = replace
 						self.hidState[c][y][x + (d*e)] = replace
+						self.hidState[0][y][x + (d*e)] = Space.Empty
 						len_ -= 1
 					else:
 						break
