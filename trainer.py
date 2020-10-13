@@ -14,7 +14,7 @@ import gym_battleship1
 import builtins
 # import timeit # DEBUG Only
 import time
-from random import random, shuffle, randrange
+from random import random, shuffle, randrange, choice
 # from collections import deques
 
 from customs import customAccuracy, buildModel
@@ -25,21 +25,24 @@ print(tf.__version__)
 tf.keras.backend.set_image_data_format('channels_first')
 
 # MODEL TWEAKS
-NUM_GAMES = 1200
+NUM_GAMES = 5000
 EPSILON = 1.0
 LEARNING_RATE = 0.0001
 MOMENTUM = 0.05
 CHANNEL_TYPE = "channels_last"
-TOLERANCE = 1 # how many tries to permit
+TOLERANCE = 5 # how many tries to permit
 AXIS = 1 if CHANNEL_TYPE == "channels_first" else -1
 # print(NUM_GAMES)
 # CONFIGURING THE MODEL
 
 model = buildModel()
-# model = tf.keras.models.load_model('saved_model/my_model10.h5',compile=False,custom_objects={'customAccuracy':customAccuracy})
-# for layer in model.layers:
-# 	layer.trainable = True
-# model.layers[-2].trainable = False # Switch between these two
+# model = oldBuildModel()
+# model = tf.keras.models.load_model('saved_model/my_model13.h5',compile=False,custom_objects={'customAccuracy':customAccuracy})
+for layer in model.layers:
+	layer.trainable = False
+model.layers[-2].trainable = True # Switch between these two
+
+model.load_weights('saved_model/checkpoints/cp') #sometimes buggy with initializing the optimizer, perm fix
 
 optim = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
 error = tf.keras.metrics.MeanAbsoluteError()
@@ -47,11 +50,9 @@ lossAvg = tf.keras.metrics.Mean()
 accuracy = tf.keras.metrics.Mean()
 gameLength = tf.keras.metrics.Mean()
 model.compile(optimizer=optim,loss='binary_crossentropy',metrics=[error,customAccuracy])
-
 summary_writer = tf.summary.create_file_writer('logs')
 # tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir='logs', histogram_freq=1)
 print(model.summary())
-# model.load_weights('saved_model/checkpoints/cp')
 
 # Globals
 ct = time.time()
@@ -59,12 +60,10 @@ env = gym.make('battleship1-v1')
 
 @tf.function() # Decoration is 10 fold faster, 
 def makeMove(obs,f):
-	print(e, f)
+	preds = model(obs, training=False)
 	if f == 1:
-		preds = model(obs, training=False)
 		return tf.argmax(preds, 1, output_type=tf.int32)[0]
 	else:
-		preds = model(obs, training=False)
 		return tf.math.top_k(preds, k=f)[1][0][f-1]
 
 def singleShipSight(e, match):
@@ -86,10 +85,10 @@ observations = []
 expecteds = []
 vfunc = np.vectorize(lambda e: e.value[0])
 vfuncSingleShip = np.vectorize(singleShipSight)
-# sess = tf.Session()
 possMoves = list(range(100))
 if EPSILON >= 1.0:
 	fullyRandom = np.random.rand(NUM_GAMES,100).argsort(1)[:,:100]
+
 for epoch in range(0,NUM_GAMES):
 	prevObs, prevOut = env.reset()
 	# prevObs = np.copy(prevObs)
@@ -99,14 +98,14 @@ for epoch in range(0,NUM_GAMES):
 	prevObs = tf.convert_to_tensor([prevObs])
 
 	done = False
-	slotsLeft = copy.copy(possMoves)
+	slotsLeft = copy(possMoves)
 	prevReward = False
 	while not done:
 		# Could Accelerate this, however few tf methods, and a couple of outside methods
 		if EPSILON >= 1.0:
 			move = fullyRandom[epoch, env.counter]
 		elif random() < EPSILON:
-			pass
+			move = choice(slotsLeft)
 		else:
 			for f in range(TOLERANCE):
 				move = makeMove(prevObs,f+1).numpy()
@@ -118,15 +117,20 @@ for epoch in range(0,NUM_GAMES):
 # 		prevOut = vfunc(prevOut)
 		if reward:
 			hits += 1
+
 # 		if prevReward:
 # 			po = vfuncSingleShip(prevOut, env.state[move//10][move%10])
-# 			if np.count_nonzero(prevOut):
-		prevOut = vfunc(prevOut)
-# 			observations.append(prevObs[0])
-# 			expecteds.append(po)
-# 		prevReward = reward
+# 			if np.count_nonzero(po):
+# 				observations.append(prevObs[0])
+# 				expecteds.append(po)
 
-# 		if done:
+		prevOut = vfunc(prevOut)
+		prevReward = reward
+		
+		temp = vfunc(out)
+		print(prevOut[move]) #fullyRandom[epoch, abs(env.counter - 2)]
+
+# 		if done: 
 		observations.append(prevObs[0])
 		expecteds.append(prevOut)
 # 		expecteds.append(tf.convert_to_tensor(slotsLeft))
@@ -138,8 +142,8 @@ for epoch in range(0,NUM_GAMES):
 		iterartions += 1
 		if done:
 			gameLength.update_state(env.counter)
-# 		else:
-# 			slotsLeft.remove(move)
+		else:
+			slotsLeft.remove(move)
 
 	# TRAINING
 
@@ -185,7 +189,9 @@ for epoch in range(0,NUM_GAMES):
 # 			EPSILON -= 0.02
 # 		else:
 # 		EPSILON /= 1.75
-		model.save_weights('saved_model/checkpoints/cp')
+
+# 		if lossAvg.result() != 0.0:
+# 			model.save_weights('saved_model/checkpoints/cp')
 		ct = time.time()
 
 # observationStack = tf.stack(observations)
