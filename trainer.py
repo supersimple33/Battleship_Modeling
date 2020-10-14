@@ -25,12 +25,12 @@ print(tf.__version__)
 tf.keras.backend.set_image_data_format('channels_first')
 
 # MODEL TWEAKS
-NUM_GAMES = 5000
-EPSILON = 1.0
+NUM_GAMES = 12000
+EPSILON = 0.8
 LEARNING_RATE = 0.0001
 MOMENTUM = 0.05
 CHANNEL_TYPE = "channels_last"
-TOLERANCE = 5 # how many tries to permit
+TOLERANCE = 1 # how many tries to permit
 AXIS = 1 if CHANNEL_TYPE == "channels_first" else -1
 # print(NUM_GAMES)
 # CONFIGURING THE MODEL
@@ -38,11 +38,12 @@ AXIS = 1 if CHANNEL_TYPE == "channels_first" else -1
 model = buildModel()
 # model = oldBuildModel()
 # model = tf.keras.models.load_model('saved_model/my_model13.h5',compile=False,custom_objects={'customAccuracy':customAccuracy})
-for layer in model.layers:
-	layer.trainable = False
-model.layers[-2].trainable = True # Switch between these two
 
-model.load_weights('saved_model/checkpoints/cp') #sometimes buggy with initializing the optimizer, perm fix
+# for layer in model.layers:
+# 	layer.trainable = False
+# model.layers[-2].trainable = True # Switch between these two
+
+# model.load_weights('saved_model/checkpoints/cp') #sometimes buggy with initializing the optimizer, perm fix
 
 optim = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
 error = tf.keras.metrics.MeanAbsoluteError()
@@ -114,7 +115,6 @@ for epoch in range(0,NUM_GAMES):
 		obs, reward, done, out = env.step(move)
 		obs = vfunc(obs)
 
-# 		prevOut = vfunc(prevOut)
 		if reward:
 			hits += 1
 
@@ -126,16 +126,17 @@ for epoch in range(0,NUM_GAMES):
 
 		prevOut = vfunc(prevOut)
 		prevReward = reward
-		
-		temp = vfunc(out)
-		print(prevOut[move]) #fullyRandom[epoch, abs(env.counter - 2)]
+
+# 		print(out[move]) #fullyRandom[epoch, abs(env.counter - 2)]
 
 # 		if done: 
 		observations.append(prevObs[0])
 		expecteds.append(prevOut)
-# 		expecteds.append(tf.convert_to_tensor(slotsLeft))
-# 		expecteds.append(tf.cast(tf.convert_to_tensor(prevOut),dtype=tf.dtypes.float32))
 
+# 		zer = tf.math.count_nonzero(prevObs, axis=1, keepdims=True, dtype=tf.float32)
+# 		sums = tf.add_n([tf.reshape(zer, [100]), tf.convert_to_tensor(prevOut)]) #tf.reshape(expBatch, [32,1,10,10])
+# 		if 2 in sums.numpy():
+# 			raise
 		# obs = np.moveaxis(obs,0,-1) # CPU ONLY
 		prevObs = tf.convert_to_tensor([obs])
 		prevOut = np.copy(out)
@@ -152,16 +153,25 @@ for epoch in range(0,NUM_GAMES):
 	# 	pass
 
 	if len(observations) > 1024:
-# 		rt = time.time()
 		batch_size = 32
-		shuffle(observations)
-		shuffle(expecteds)
+
+		pairing = list(zip(observations, expecteds))
+		shuffle(pairing)
+		observations, expecteds = list(zip(*pairing))
+
 		observations = [observations[i:i + batch_size] for i in range(0, len(observations), batch_size)]
 		expecteds = [expecteds[i:i + batch_size] for i in range(0, len(expecteds), batch_size)]
 		for b in range(len(observations)):
-
 			obsBatch = tf.stack(observations[b])
 			expBatch = tf.stack(expecteds[b])
+
+# 			zer = tf.math.count_nonzero(obsBatch, axis=1, keepdims=True, dtype=tf.float32)
+# 			sums = tf.add_n([tf.reshape(zer, [32,100]), expBatch]) #tf.reshape(expBatch, [32,1,10,10])
+# 			print(tf.reshape(sums[0], [10,10]))
+# 			print(tf.reshape(sums[1], [10,10]))
+# 			print(tf.reshape(sums[2], [10,10]))
+# 			if 2 in sums.numpy():
+# 				raise
 
 			ret = model.train_on_batch(x=obsBatch,y=expBatch,reset_metrics=False, return_dict=True)
 			lossAvg.update_state(ret[0])
@@ -185,8 +195,8 @@ for epoch in range(0,NUM_GAMES):
 		lossAvg.reset_states()
 		hits = 0
 		iterartions = 0
-# 		if EPSILON > 0.06:
-# 			EPSILON -= 0.02
+		if EPSILON > 0.06:
+			EPSILON -= 0.02
 # 		else:
 # 		EPSILON /= 1.75
 
