@@ -17,27 +17,25 @@ import time
 from random import random, shuffle, randrange, choice
 # from collections import deques
 
+tf.keras.backend.set_image_data_format('channels_last')
 from customs import customAccuracy, buildModel
 
 from copy import copy
 
 print(tf.__version__)
-tf.keras.backend.set_image_data_format('channels_first')
 
 # MODEL TWEAKS
-NUM_GAMES = 12000
+NUM_GAMES = 1000
 EPSILON = 0.8
 LEARNING_RATE = 0.0001
-MOMENTUM = 0.05
-CHANNEL_TYPE = "channels_last"
-TOLERANCE = 1 # how many tries to permit
+TOLERANCE = 0 # how many tries to permit
 AXIS = 1 if CHANNEL_TYPE == "channels_first" else -1
 # print(NUM_GAMES)
 # CONFIGURING THE MODEL
 
 model = buildModel()
 # model = oldBuildModel()
-# model = tf.keras.models.load_model('saved_model/my_model13.h5',compile=False,custom_objects={'customAccuracy':customAccuracy})
+# model = tf.keras.models.load_model('saved_model/my_model9.h5',compile=False,custom_objects={'customAccuracy':customAccuracy})
 
 # for layer in model.layers:
 # 	layer.trainable = False
@@ -124,7 +122,7 @@ for epoch in range(0,NUM_GAMES):
 # 				observations.append(prevObs[0])
 # 				expecteds.append(po)
 
-		prevOut = vfunc(prevOut)
+		prevOut = vfunc(prevOut) #out = vfunc(out) #prevobs non zero should never have one in corresponding expected # non zero pre obs should never be greater than one
 		prevReward = reward
 
 # 		print(out[move]) #fullyRandom[epoch, abs(env.counter - 2)]
@@ -165,21 +163,12 @@ for epoch in range(0,NUM_GAMES):
 			obsBatch = tf.stack(observations[b])
 			expBatch = tf.stack(expecteds[b])
 
-# 			zer = tf.math.count_nonzero(obsBatch, axis=1, keepdims=True, dtype=tf.float32)
-# 			sums = tf.add_n([tf.reshape(zer, [32,100]), expBatch]) #tf.reshape(expBatch, [32,1,10,10])
-# 			print(tf.reshape(sums[0], [10,10]))
-# 			print(tf.reshape(sums[1], [10,10]))
-# 			print(tf.reshape(sums[2], [10,10]))
-# 			if 2 in sums.numpy():
-# 				raise
-
 			ret = model.train_on_batch(x=obsBatch,y=expBatch,reset_metrics=False, return_dict=True)
 			lossAvg.update_state(ret[0])
 			accuracy.update_state(ret[2])
 
 		observations = []
 		expecteds = []
-# 		print(round(time.time() - rt, 3))
 
 	if (epoch+1) % (NUM_GAMES // 30) == 0:
 		# with summary_writer.as_default():
@@ -197,33 +186,12 @@ for epoch in range(0,NUM_GAMES):
 		iterartions = 0
 		if EPSILON > 0.06:
 			EPSILON -= 0.02
-# 		else:
-# 		EPSILON /= 1.75
+		# else:
+			# EPSILON /= 1.75
 
-# 		if lossAvg.result() != 0.0:
-# 			model.save_weights('saved_model/checkpoints/cp')
+		if lossAvg.result() != 0.0:
+			model.save_weights('saved_model/checkpoints/cp')
 		ct = time.time()
 
-# observationStack = tf.stack(observations)
-# expectedStack = tf.stack(expecteds)
-# dataset = tf.data.Dataset.from_tensor_slices((observationStack, expectedStack))
-
-# observations = np.array(observations)
-# expecteds = np.array(expecteds)
-# print(observations)
-
-# with open('data.npz', 'wb') as f:
-# 	print('started save')
-# 	np.savez_compressed(f, observations, expecteds)
-# 	print('saved')
-# with open('data.npz', 'rb') as f:
-# 	l = np.load(f)
-	# pass
-
-# dataset = dataset.batch(32)
-# dataset = dataset.shuffle(dataset.__len__(), reshuffle_each_iteration=True)
-# tf.data.experimental.save(dataset=dataset,path='saved_data',compression='GZIP')
-# with tf.device('/cpu:0'):
-# 	model.fit(x=observationStack,y=expectezdStack,epochs=10,verbose=2,callbacks=[tensorboard_callback],use_multiprocessing=True) # multiprocessing?
-model.save('saved_model/my_model10.h5')
+model.save('saved_model/leviathan.h5')
 print("Model Saved")
