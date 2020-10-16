@@ -23,33 +23,6 @@ Tried multiple ways of activating radeon gpu on my mac however unsuccessful.
 Going to use the colab instead.
 Also added xception and hyperband in hopes of finding a better performing model, however I am a little short onn dataset length.
 
-[Results summary]
- |-Results in ./untitled_project
- |-Showing 10 best trials
- |-Objective(name='customAccuracy', direction='max')
-[Trial summary]
- |-Trial ID: 79495c04b074470eb994e8c9c038d4d0
- |-Score: 0.6884676416714987
- |-Best step: 0
- > Hyperparameters:
- |-learning_rate: 0.001
- |-num_layers: 2
- |-units_0: 288
- |-units_1: 416
- |-units_2: 160
- |-units_3: 32
-[Trial summary]
- |-Trial ID: 32922ae405aae8483caca37bef505b8c
- |-Score: 0.6720315019289652
- |-Best step: 0
- > Hyperparameters:
- |-learning_rate: 0.001
- |-num_layers: 3
- |-units_0: 288
- |-units_1: 320
- |-units_2: 448
- |-units_3: 416
-
 09/25 Switched to PaperSpace notebooks and have been training for quite a while.
 Discovered a fatal flaw in the shuffling of data which invalidates the hbtuner process.
 Continuing regardless in the interest of time.
@@ -62,3 +35,13 @@ Created my own model based on inception with 3 convolutional paths a Average Poo
 09/31
 Training with new model does ~20 moves w/o failures.
 Added in a tolerance to counteract popularity of early game states so model is more saturated.
+
+10/15 Forgot to take notes for a while.
+Turns out the root of all problems had to do with training.
+The list for examples and labels were unsynced when shuffling. 
+This problem has been solved now and the model trains as expected.
+Explains why the model would not work after running through the hbtuner with good results.
+
+10/16 
+Added cpu and gpu execution.
+Working on adding an easy game gui that works when playing live.
