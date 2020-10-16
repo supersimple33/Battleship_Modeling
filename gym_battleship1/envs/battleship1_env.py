@@ -7,27 +7,27 @@ import numpy as np
 
 # indList = ("|-|","!M!","(2)","(S)","(C)","(4)","(5)",3"x2x","xSx","xCx","x4x","x5x","|2|","|S|","|C|","|4|","|5|","HiddenCruiser")
 class Space(enum.Enum):
-	Empty = 0.0,"|-|" #_
+	Empty = np.float32(0.0),"|-|" #_
 
-	Miss = -1.0,"!M!" #m
+	Miss = np.float32(-1.0),"!M!" #m
 	
-	HitPTwo = 1.0,"(2)"
-	HitPSub = 1.0,"(S)"
-	HitPCruiser = 1.0,"(C)"
-	HitPFour = 1.0,"(4)"
-	HitPFive = 1.0,"(5)"
+	HitPTwo = np.float32(1.0),"(2)"
+	HitPSub = np.float32(1.0),"(S)"
+	HitPCruiser = np.float32(1.0),"(C)"
+	HitPFour = np.float32(1.0),"(4)"
+	HitPFive = np.float32(1.0),"(5)"
 
-	SunkTwo = 0.2,"x2x" # ship values, should every ship get its own channel
-	SunkSub = 0.4,"xSx"
-	SunkCruiser = 0.6,"xCx"
-	SunkFour = 0.8,"x4x"
-	SunkFive = 1.0,"x5x"
+	SunkTwo = np.float32(0.2),"x2x" # ship values, should every ship get its own channel
+	SunkSub = np.float32(0.4),"xSx"
+	SunkCruiser = np.float32(0.6),"xCx"
+	SunkFour = np.float32(0.8),"x4x"
+	SunkFive = np.float32(1.0),"x5x"
 
-	HiddenTwo = 1.0,"|2|" # Need to update these values likely 1
-	HiddenSub = 1.0,"|S|"
-	HiddenCruiser = 1.0,"|C|"
-	HiddenFour = 1.0,"|4|"
-	HiddenFive = 1.0,"|5|"
+	HiddenTwo = np.float32(1.0),"|2|" # Need to update these values likely 1
+	HiddenSub = np.float32(1.0),"|S|"
+	HiddenCruiser = np.float32(1.0),"|C|"
+	HiddenFour = np.float32(1.0),"|4|"
+	HiddenFive = np.float32(1.0),"|5|"
 
 def addShip(state, ship, len_, x, y, d):
 		r = range(0, len_)
