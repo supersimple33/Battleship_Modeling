@@ -2,23 +2,35 @@ import gym
 import gym_battleship1
 
 import tensorflow as tf
+import h5py
 import numpy as np
+
+import copy
 
 import tensorflow.keras.losses
 tensorflow.keras.losses.custom_loss = tf.nn.sigmoid_cross_entropy_with_logits
 
-from customs import customAccuracy
+from customs import customAccuracy, buildModel
 
 from matplotlib import pyplot
 
-tf.keras.backend.set_image_data_format('channels_first')
+tf.keras.backend.set_image_data_format('channels_last')
 
 env = gym.make('battleship1-v1')
 env.reset()
 
-trained_model = tf.keras.models.load_model('saved_model/my_model.h5',compile=False,custom_objects={'customAccuracy':customAccuracy})
-trained_model.summary()
+# model.summary()
+model = buildModel()
+model.load_weights('saved_model/leviathan.h5', skip_mismatch=True, by_name=True) #unec?
+weights = h5py.File('saved_model/leviathan.h5', 'r')
+if tensorflow.keras.backend.image_data_format() == "channels_last":
+	LC = weights['model_weights']['locally_connected2d']['locally_connected2d']['kernel:0'][()]
+	LC = np.array(LC)
+	LC = np.transpose(LC, [1,2,0,4,5,3])
+	LCWeights = [LC, model.layers[-2].get_weights()[1]]
+	model.layers[-2].set_weights(LCWeights)
 
+print()
 def displayKernel(lay, ch=None):
 	if ch is None:
 		chRange = range(6)
@@ -26,7 +38,7 @@ def displayKernel(lay, ch=None):
 		chRange = range(ch[0], ch[1])
 	pyplot.close()
 	# retrieve weights from the second hidden layer
-	filters, biases = trained_model.layers[lay].get_weights()
+	filters, biases = model.layers[lay].get_weights()
 	# normalize filter values to 0-1 so we can visualize them
 	f_min, f_max = filters.min(), filters.max()
 	filters = (filters - f_min) / (f_max - f_min)
@@ -65,7 +77,8 @@ for each_game in range(1):
 	prev_obs, _ = env.reset()
 	prev_obs = [[[x.value[0] for x in y] for y in c] for c in prev_obs] # redo timeit with numpy
 	prev_obs = tf.convert_to_tensor([prev_obs])
-	prev_obs = tf.reshape(tf.transpose(prev_obs[0]),shape=(1,10,10,6)) # ONLY NEEDED FOR CPUS
+	if tensorflow.keras.backend.image_data_format() == "channels_last":
+		prev_obs = tf.reshape(tf.transpose(prev_obs[0]),shape=(1,10,10,2)) # ONLY NEEDED FOR CPUS
 	prev_action = -1
 	for step_index in range(500):
 		# env.render()
@@ -75,7 +88,7 @@ for each_game in range(1):
 		# elif step_index < 50:
 		# 	action = step_index
 
-		logits = trained_model(tf.cast(prev_obs, tf.float32), training=False)[0]
+		logits = model(tf.cast(prev_obs, tf.float32), training=False)[0]
 		heatMap(logits.numpy(), env.state)
 # 		raise
 		action = tf.argmax(logits,-1).numpy()
