@@ -49,10 +49,8 @@ def buildModel():
 
 	c1 = Conv2D(filters=numFilters // 2,kernel_size=1,activation=activation, padding='same')(inputLay) # DESTORY/REPLACE
 
-# 	c3 = Conv2D(filters=3*numFilters//2, kernel_size=1, activation=activation, padding='same')(inputLay)
 	c3 = Conv2D(filters=numFilters, kernel_size=3, activation=activation, padding='same', kernel_regularizer=reg1)(inputLay)
 
-# 	c5 = Conv2D(filters=3*numFilters//2, kernel_size=1, activation=activation, padding='same')(inputLay)
 	c5 = Conv2D(filters=numFilters, kernel_size=5, activation=activation, padding='same', kernel_regularizer=reg1)(inputLay) # separable
 
 	c7 = Conv2D(filters=numFilters // 2, kernel_size=3, activation=activation, padding='same', dilation_rate=3, kernel_regularizer=reg1)(inputLay) # Separable
