@@ -1,9 +1,10 @@
 # Battleship_Modeling
-![View of Model Layers](modeldesc.png)
+Model Structure ![View of Model Layers](modeldesc.png)
 ## Premise
 The original version of this project simply collected data on a ~60,000 battleship games and then I used Apple's CreateML to train a model. Unfortunantely I had not realized their was a bug in the ship placement causing ships to only be placed vertically. After learning alot about tensorflow and the many aspects of Machine Learning I took another stab at the project.
 ## The Model
-Leviathan was trained on gpu's from paperspace thus it uses channels first however built into most files is a converter that will take the gpu model and switch it to cpu complient.
+Collection of Heat Maps ![View of Model Layers](HeatMaps.png)
+Leviathan was trained on GPU's from paperspace thus it uses channels first however built into both usage files (vissualizer and play) is a converter that will take the GPU model and switch it to CPU complient.
 ### Input Pipeline
 The board is split into 2 channels and a 10 by 10 grid (2,10,10). Values in channel 0 are -1.0, 0.0 or 1.0. -1.0 Represents a slot that has been shot at and missed. 1.0 represents a hit on a ship of unknown class. 0.0 represents a slot that is either empty or holds a sunk ship. The second channel represents sunk ships with values 0.0, 0.2, 0.4, 0.6, 0.8 or 1.0. A value of 0.0 represents a slot which has no sunk ship within it. 0.2-1.0 correspond to each ship in ascending size, 0.2 being the supply boat and 1.0 being the carrier.
 ### Layers
