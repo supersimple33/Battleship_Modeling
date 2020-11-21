@@ -20,7 +20,7 @@ Shot keeping is quite simple. If a slot is empty flip it to a miss, if a slot co
 ## Training
 A set number of games are played. For each move in each game either a random space is chosen or a prediction is obtained from the model dependent on the Epsilon. The observation and expected prediction is recorded for every move made. These records are then shuffled, and the model is trained on batches of the data. Finally diagnostics are printed pertaining to the previous games.
 ## Usage
-### vissualizer.ipynb
-Running the vissualizer will start a single game and the model will play the game to completion. The notebook will output every move made by the model and print what it saw and the heat map of slots it may shoot at. 
-### play.ipynb
+### [vissualizer.ipynb](./vissualizer.ipynb)
+Running the vissualizer will start a single game and the model will play the game to completion. The notebook will output every move made by the model and print what it saw and the heat map of slots it may shoot at. **Clicking the link above will display a demo game from the last running of the vissualizer.**
+### [play.ipynb](./play.ipynb)
 The play notebook is designed for using the model live. Running the last block will return the predictions made by the model given a state in sitRep. It is up to the user to update the sitRep arrays based on the previously defined input-pipeline. The notebook will also output what is sees as well as the heatmap of predictions.
