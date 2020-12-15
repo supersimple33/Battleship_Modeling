@@ -1,4 +1,4 @@
-pyproject.toml
+README.md
 setup.py
 gym_battleship1.egg-info/PKG-INFO
 gym_battleship1.egg-info/SOURCES.txt
