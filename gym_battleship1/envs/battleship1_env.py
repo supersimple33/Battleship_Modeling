@@ -84,8 +84,11 @@ def setupShips(np_random):
 #game code
 class Battleship1(gym.Env):
 	metadata = {'render.modes': ['human']}
+	seed = None
 
-	def __init__(self):
+	def __init__(self, seed = None):
+		self.seed = self.newSeed(seed)
+
 		self.action_space = spaces.Discrete(100)
 		missesChannel = spaces.Tuple([
     		spaces.MultiDiscrete([2, 2, 2, 2, 2, 2, 2, 2, 2, 2]) for _ in range(10)
@@ -94,7 +97,6 @@ class Battleship1(gym.Env):
     		spaces.MultiDiscrete([3, 3, 3, 3, 3, 3, 3, 3, 3, 3]) for _ in range(10)
 		])
 		self.observation_space = spaces.Tuple((missesChannel,regChannel,regChannel,regChannel,regChannel,regChannel))
-		self.seed()
 		self.hidState = np.full(shape=(2,10,10),fill_value=Space.Empty)
 
 		self.reset()
@@ -151,7 +153,6 @@ class Battleship1(gym.Env):
 		targetSpace = self.state[y][x]
 		self.reward = False
 		# hit = False
-
 		if self.done == True:
 			print("Game Over")
 			return [self.hidState, self.reward, self.done, self.expectedShots] #check return
@@ -212,7 +213,9 @@ class Battleship1(gym.Env):
 			# self.reward = 100 - self.counter
 		return [self.hidState, self.reward, self.done, self.expectedShots]
 
-	def reset(self):
+	def reset(self, seed=None):
+		self.seed = self.newSeed(seed)
+
 		self.state = setupShips(self.np_random)
 		self.hidState.fill(Space.Empty)
 		self.expectedShots = np.copy(np.reshape(self.state, (100)))
@@ -237,10 +240,16 @@ class Battleship1(gym.Env):
 			ret = str(i) + " "
 		print()
 
-	def seed(self, seed=None):
-		self.np_random, seed = utils.seeding.np_random()
-		return [seed]
+	def newSeed(self, seed=None):
+		self.np_random, seed = utils.seeding.np_random(seed)
+		return seed
 
 # full game 734 µs ± 27 µs per loop (mean ± std. dev. of 20 runs, 1000 loops each)
 
 # 454 µs ± 20.4 µs per loop (mean ± std. dev. of 20 runs, 1000 loops each)
+
+# import timeit
+# env = Battleship1()
+# # L = timeit.timeit('env.reset()', globals=globals(), number = 1000)
+# L = timeit.timeit('for i in range(0,99): env.step(i); env.reset()', globals=globals(), number = 100)
+# print(L)
