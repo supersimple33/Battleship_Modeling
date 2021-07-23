@@ -4,7 +4,6 @@ import tensorflow as tf
 from tensorflow.keras.layers import InputLayer, Conv2D, BatchNormalization, LeakyReLU, Add, Flatten, Dense, Concatenate, Dot, Reshape, Dropout
 import tensorflow.keras.backend as K
 print(tf.__version__)
-# tf.autograph.set_verbosity(10,alsologtostdout=True)
 
 import numpy as np
 
@@ -15,7 +14,7 @@ import builtins
 # import timeit # DEBUG Only
 import time
 from random import random, shuffle, randrange, choice
-# from collections import deques
+CHANNEL_TYPE = 'channels_last'
 
 tf.keras.backend.set_image_data_format('channels_last')
 from customs import customAccuracy, buildModel
@@ -31,8 +30,8 @@ LEARNING_RATE = 0.0001
 TOLERANCE = 0 # how many tries to permit
 AXIS = 1 if CHANNEL_TYPE == "channels_first" else -1
 # print(NUM_GAMES)
-# CONFIGURING THE MODEL
 
+# CONFIGURING THE MODEL
 model = buildModel()
 # model = oldBuildModel()
 # model = tf.keras.models.load_model('saved_model/my_model9.h5',compile=False,custom_objects={'customAccuracy':customAccuracy})
@@ -53,10 +52,13 @@ summary_writer = tf.summary.create_file_writer('logs')
 # tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir='logs', histogram_freq=1)
 print(model.summary())
 
-# Globals
+# GLOBALS
 ct = time.time()
 env = gym.make('battleship1-v1')
 
+blankBoard = np.zeros((100,), np.float32)
+
+# Takes a move and executes it on the environment
 @tf.function() # Decoration is 10 fold faster, 
 def makeMove(obs,f):
 	preds = model(obs, training=False)
@@ -65,6 +67,7 @@ def makeMove(obs,f):
 	else:
 		return tf.math.top_k(preds, k=f)[1][0][f-1]
 
+# Converts regular spaces to what would be seen in a game 
 def singleShipSight(e, match):
 	if '2' in match.value[1]:
 		return 1 if '2' in e.value[1] else 0
@@ -78,6 +81,8 @@ def singleShipSight(e, match):
 		return 1 if '5' in e.value[1] else 0
 	return 0
 
+# Recursion Variables and Stats
+lengthLimit = 98
 hits = 0
 iterartions = 0
 observations = []
@@ -88,17 +93,25 @@ possMoves = list(range(100))
 if EPSILON >= 1.0:
 	fullyRandom = np.random.rand(NUM_GAMES,100).argsort(1)[:,:100]
 
-for epoch in range(0,NUM_GAMES):
+# Loop through for each epoch
+for epoch in range(0, NUM_GAMES):
 	prevObs, prevOut = env.reset()
-	# prevObs = np.copy(prevObs)
-	prevOut = np.copy(prevOut) # could get rid of copy in replace of tensor conversion
-	# prevObs = np.moveaxis(prevObs,0,-1) # CPU ONLY
+	seed = env.seed
+
+	# Get the first observation
+	prevObs = np.moveaxis(prevObs,0,-1) # CPU ONLY
 	prevObs = vfunc(prevObs) # redo timeit with numpy
 	prevObs = tf.convert_to_tensor([prevObs])
 
+	# Set up variables for this epoch
 	done = False
 	slotsLeft = copy(possMoves)
 	prevReward = False
+
+	gameObs = []
+	gameExp = []
+
+	# Loop through until game is over
 	while not done:
 		# Could Accelerate this, however few tf methods, and a couple of outside methods
 		if EPSILON >= 1.0:
@@ -144,12 +157,7 @@ for epoch in range(0,NUM_GAMES):
 		else:
 			slotsLeft.remove(move)
 
-	# TRAINING
-
-	# for i in range(len(observations)): # FOR DEBUGGING #
-	# 	ret = trainGrads(tf.reshape(observations[i],shape=(1,10,10,6)),expecteds[i])
-	# 	pass
-
+	# TRAINING THE MODEL
 	if len(observations) > 1024:
 		batch_size = 32
 
@@ -170,6 +178,7 @@ for epoch in range(0,NUM_GAMES):
 		observations = []
 		expecteds = []
 
+	# Ocassionally update stats and save the model
 	if (epoch+1) % (NUM_GAMES // 30) == 0:
 		# with summary_writer.as_default():
 			# tf.summary.scalar('Loss', lossAvg.result(), step=epoch+1)
@@ -193,5 +202,6 @@ for epoch in range(0,NUM_GAMES):
 			model.save_weights('saved_model/checkpoints/cp')
 		ct = time.time()
 
-model.save('saved_model/leviathan.h5')
+# Finally save
+model.save('saved_model/foresithe.h5')
 print("Model Saved")
