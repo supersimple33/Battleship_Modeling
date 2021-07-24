@@ -151,11 +151,11 @@ while epoch < NUM_GAMES:
 			failed = 0
 		elif env.counter >= lengthLimit: # or equal
 			failed += 1
-			if failed > 24:
+			if failed > 100: # BUG: if we are failing more than 100 iterations something is wrong
 				failed = 0 # dont want to get stuck in a loop and waste time
-				print("SKIPPING SEED: " + str(seed))
-				epoch += 1
-			elif failed > 7:
+				print("SKIPPING SEED: " + str(seed) + " after failing " + str(failed) + " times")
+				# epoch += 1
+			elif failed == 20:
 				print("failed " + str(seed) + " for the " + str(failed) + " time this is epoch " + str(epoch)) # report failures
 			epoch -= 1
 			break
@@ -175,7 +175,7 @@ while epoch < NUM_GAMES:
 			slotsLeft.remove(move)
 
 	# TRAINING THE MODEL
-	if len(observations) > 1024:
+	if len(observations) > 1024 and failed == 0: # only print once we have succeeded
 		batch_size = 32
 
 		pairing = list(zip(observations, expecteds))
