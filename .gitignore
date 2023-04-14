@@ -7,5 +7,9 @@ shortdata.csv
 hbtuner/*
 rstuner/*
 
+*.pyc
+
 logs/*
 *.icloud
+*.DS_Store
+*.egg-info
