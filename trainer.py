@@ -8,7 +8,7 @@ print(tf.__version__)
 import numpy as np
 
 import gym
-import gym_battleship1
+import battleship_envs
 
 import builtins
 # import timeit # DEBUG Only
@@ -54,7 +54,7 @@ print(model.summary())
 
 # GLOBALS
 ct = time.time()
-env = gym.make('battleship1-v1')
+env = gym.make('battleship1-v1') # watch safety here
 
 blankBoard = np.zeros((100,), np.float32)
 
