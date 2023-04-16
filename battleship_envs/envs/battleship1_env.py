@@ -3,7 +3,7 @@ from gym import error, spaces, utils
 
 import numpy as np
 
-from shared import Space, setupShips
+from shared import Space, setup_ships
 
 #game code
 class Battleship1(gym.Env):
@@ -77,7 +77,7 @@ class Battleship1(gym.Env):
         targetSpace = self.state[y][x]
         self.reward = False
         # hit = False
-        if self.done == True:
+        if self.done:
             # print("Game Over")
             return self.hidState, self.reward, self.done, self.expectedShots #check return
         else:
@@ -140,7 +140,7 @@ class Battleship1(gym.Env):
     def reset(self, seed=None):
         self.seed = self.new_seed(seed)
 
-        self.state = setupShips(self.np_random)
+        self.state = setup_ships(self.np_random)
         self.hidState.fill(Space.Empty)
         self.expectedShots = np.copy(np.reshape(self.state, (100)))
 
@@ -174,14 +174,20 @@ class Battleship1(gym.Env):
 
 import timeit
 env = Battleship1()
+for i in range(100):
+    env.step(i)
+
 avg_list = []
 for i in range(0,20):
     print(i)
-    L = timeit.timeit('env.reset()', globals=globals(), number = 10000)
-    # L = timeit.timeit(setup='env.reset()', stmt='for i in range(0,99): env.step(i); env.reset()', globals=globals(), number = 100) #2.73
-    avg_list.append(L)
+    # L = [timeit.timeit('env.reset()', globals=globals(), number = 10000)]
+    L = timeit.repeat(setup='env.reset(); i=0', stmt='env.step(i); i += 1', globals=globals(), number = 100, repeat = 5000) #2.73
+    avg_list.append(sum(L))
 print("mean: ", sum(avg_list)/len(avg_list), "std_dev: ", np.std(avg_list))
 print(avg_list)
 
 # mean:  2.6814786437500002 std_dev:  0.028973936597862637
 # mean:  2.6619473125999997 std_dev:  0.019689577780807894
+
+# mean:  1.15642401880003 std_dev:  0.02141613605211344
+# mean:  1.171778880150033 std_dev:  0.0151238295477036

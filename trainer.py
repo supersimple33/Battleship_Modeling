@@ -69,16 +69,16 @@ def makeMove(obs,f):
 
 # Converts regular spaces to what would be seen in a game 
 def singleShipSight(e, match):
-	if '2' in match.value[1]:
-		return 1 if '2' in e.value[1] else 0
-	if 'S' in match.value[1]:
-		return 1 if 'S' in e.value[1] else 0
-	if 'C' in match.value[1]:
-		return 1 if 'C' in e.value[1] else 0
-	if '4' in match.value[1]:
-		return 1 if '4' in e.value[1] else 0
-	if '5' in match.value[1]:
-		return 1 if '5' in e.value[1] else 0
+	if '2' in match.description:
+		return 1 if '2' in e.description else 0
+	if 'S' in match.description:
+		return 1 if 'S' in e.description else 0
+	if 'C' in match.description:
+		return 1 if 'C' in e.description else 0
+	if '4' in match.description:
+		return 1 if '4' in e.description else 0
+	if '5' in match.description:
+		return 1 if '5' in e.description else 0
 	return 0
 
 # Recursion Variables and Stats
@@ -87,7 +87,7 @@ hits = 0
 iterations = 0
 observations = []
 expecteds = []
-vfunc = np.vectorize(lambda e: e.value[0])
+vfunc = np.vectorize(lambda e: e.old_values)
 vfuncSingleShip = np.vectorize(singleShipSight)
 possMoves = list(range(100))
 

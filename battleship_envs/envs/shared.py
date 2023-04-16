@@ -1,31 +1,63 @@
+from enum import Flag, unique, IntEnum, auto
 import numpy as np
-from enum import Enum, unique, IntEnum
 
 # indList = ("|-|","!M!","(2)","(S)","(C)","(4)","(5)",3"x2x","xSx","xCx","x4x","x5x","|2|","|S|","|C|","|4|","|5|","HiddenCruiser")
 @unique
-class Space(Enum): #int enum for better performance?
+
+
+class Space(Flag): # is this the best performance? Do we still need the numpy floats? intflag? bonus safety checks?
     """The labels for each of the spaces in the battleship game."""
-    Empty = np.float32(0.0),"|-|" #_
+    Empty = 0
 
-    Miss = np.float32(-1.0),"!M!" #m
+    Miss = auto()
+
+    HitPTwo = auto()
+    HitPSub = auto()
+    HitPCruiser = auto()
+    HitPFour = auto()
+    HitPFive = auto()
+
+    SunkTwo = auto()
+    SunkSub = auto()
+    SunkCruiser = auto()
+    SunkFour = auto()
+    SunkFive = auto()
+
+    HiddenTwo = auto()
+    HiddenSub = auto()
+    HiddenCruiser = auto()
+    HiddenFour = auto()
+    HiddenFive = auto()
+
+    _ignore_ = {
+        Empty : ("|-|", np.float32(0.0)),
+        Miss : ("!M!", np.float32(-1.0)),
+        HitPTwo : ("(2)", np.float32(1.0)),
+        HitPSub : ("(S)", np.float32(1.0)),
+        HitPCruiser : ("(C)", np.float32(1.0)),
+        HitPFour : ("(4)", np.float32(1.0)),
+        HitPFive : ("(5)", np.float32(1.0)),
+        SunkTwo : ("x2x", np.float32(0.2)),
+        SunkSub : ("xSx", np.float32(0.4)),
+        SunkCruiser : ("xCx", np.float32(0.6)),
+        SunkFour : ("x4x", np.float32(0.8)),
+        SunkFive : ("x5x", np.float32(1.0)),
+        HiddenTwo : ("|2|", np.float32(1.0)),
+        HiddenSub : ("|S|", np.float32(1.0)),
+        HiddenCruiser : ("|C|", np.float32(1.0)),
+        HiddenFour : ("|4|", np.float32(1.0)),
+        HiddenFive : ("|5|", np.float32(1.0)),
+    }
+
+    def description(self):
+        return self._ignore_[self][0]
     
-    HitPTwo = np.float32(1.0),"(2)"
-    HitPSub = np.float32(1.0),"(S)"
-    HitPCruiser = np.float32(1.0),"(C)"
-    HitPFour = np.float32(1.0),"(4)"
-    HitPFive = np.float32(1.0),"(5)"
+    def old_value(self):
+        return self._ignore_[self][1]
 
-    SunkTwo = np.float32(0.2),"x2x" # ship values, should every ship get its own channel
-    SunkSub = np.float32(0.4),"xSx"
-    SunkCruiser = np.float32(0.6),"xCx"
-    SunkFour = np.float32(0.8),"x4x"
-    SunkFive = np.float32(1.0),"x5x"
-
-    HiddenTwo = np.float32(1.0),"|2|" # Need to update these values likely 1
-    HiddenSub = np.float32(1.0),"|S|"
-    HiddenCruiser = np.float32(1.0),"|C|"
-    HiddenFour = np.float32(1.0),"|4|"
-    HiddenFive = np.float32(1.0),"|5|"
+hit_spaces = Space.HitPTwo | Space.HitPSub | Space.HitPCruiser | Space.HitPFour | Space.HitPFive
+sunk_spaces = Space.SunkTwo | Space.SunkSub | Space.SunkCruiser | Space.SunkFour | Space.SunkFive
+hidden_spaces = Space.HiddenTwo | Space.HiddenSub | Space.HiddenCruiser | Space.HiddenFour | Space.HiddenFive
 
 @unique
 class Direction(IntEnum):
@@ -69,7 +101,7 @@ def addShip(state, ship: Space, ship_len: int, x: int, y: int, d: Direction) -> 
 emptyStateRef = np.full(shape=(10,10),fill_value=Space.Empty)
 hidSpaceRef = [Space.HiddenFive, Space.HiddenFour, Space.HiddenCruiser, Space.HiddenSub, Space.HiddenTwo]
 shipSpaceLength = [5, 4, 3, 3, 2]
-def setupShips(np_random: np.random.Generator): # need to make this very fast
+def setup_ships(np_random: np.random.Generator): # need to make this very fast
     """Create a new state with ships placed randomly"""
     i = 0
     state = np.copy(emptyStateRef)
