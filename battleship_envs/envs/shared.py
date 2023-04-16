@@ -69,7 +69,7 @@ class Direction(IntEnum):
 
 # Spaces 2?
 
-def addShip(state, ship: Space, ship_len: int, x: int, y: int, d: Direction) -> bool:
+def add_ship(state, ship: Space, ship_len: int, x: int, y: int, d: Direction) -> bool:
     """Given a state, a ship, a length, coords, and a direction, first check if this is a valid placement and then place the ship"""
     r = range(0, ship_len)
     if d == Direction.Up:# loop run twice in order to make sure all spaces are clear before making modifications
@@ -121,7 +121,7 @@ def setup_ships(np_random: np.random.Generator): # need to make this very fast
         if not ((d == 0 and (y%10) - ship_len >= 0) or (d == 1 and (x%10) - ship_len >= 0) or (d == 2 and (y%10) + ship_len <= 9) or (d == 3 and (x%10) + ship_len <= 9)):
             bad_slots.append((slot, d))
             continue
-        if (not addShip(state, ship, ship_len, x, y, d)): # could we add the ship, if not try again with new random coordinate
+        if (not add_ship(state, ship, ship_len, x, y, d)): # could we add the ship, if not try again with new random coordinate
             bad_slots.append((slot, d))
             continue
         i += 1

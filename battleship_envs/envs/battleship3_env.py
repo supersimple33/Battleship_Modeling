@@ -12,6 +12,7 @@ from shared import Space, setup_ships, hidden_spaces, hit_spaces, sunk_spaces
 HIT_SWAPS = {Space.HiddenFive: Space.HitPFive, Space.HiddenFour: Space.HitPFour, Space.HiddenCruiser: Space.HitPCruiser, Space.HiddenSub: Space.HitPSub, Space.HiddenTwo: Space.HitPTwo}
 SUNK_SWAPS = {Space.HiddenFive: Space.SunkFive, Space.HiddenFour: Space.SunkFour, Space.HiddenCruiser: Space.SunkCruiser, Space.HiddenSub: Space.SunkSub, Space.HiddenTwo: Space.SunkTwo}
 HIT_ORDERING = [Space.HiddenTwo, Space.HiddenSub, Space.HiddenCruiser, Space.HiddenFour, Space.HiddenFive]
+SHIP_LENGTHS = [2, 3, 3, 4, 5]
 
 class Battleship3(gym.Env):
     """My third implementation of the battleship game."""
@@ -37,13 +38,14 @@ class Battleship3(gym.Env):
         self.state = setup_ships(self.np_random)
         self.hid_state = np.full(shape=(2,10,10), fill_value=False)
         self.dead_ships = np.zeros(5, dtype=np.bool_)
+        self.hits_on_ships = [0, 0, 0, 0, 0] # TODO: should we extract out dead_ships?
         
         self.counter = 0
         self.done = False
 
         return (self.hid_state, self.dead_ships), {}
     
-    def step(self, target): 
+    def step(self, target): # 
         """Take a step in the game shooting at the specified target."""
         # super().step(target)
         assert target in self.action_space
@@ -72,19 +74,24 @@ class Battleship3(gym.Env):
             self.hid_state[1][y][x] = True
             reward = 1
 
+            ship_num = HIT_ORDERING.index(slot)
+            self.hits_on_ships[ship_num] += 1
+
             # does this shot sink a ship?
-            if slot not in self.state:
-                self.dead_ships[HIT_ORDERING.index(slot)] = True
-                self.state[self.state == slot] = SUNK_SWAPS[slot]
+            if SHIP_LENGTHS[ship_num] == self.hits_on_ships[ship_num]: # speed up?
+                self.dead_ships[ship_num] = True
+                self.state[self.state == HIT_SWAPS[slot]] = SUNK_SWAPS[slot]
                 # did we sink every ship?
                 if self.dead_ships.all():
                     # print("Game Over")
                     self.done = True
         # Did we hit a ship we already sunk? uhoh
-        elif self.state[y][x] in hit_spaces or self.state[y][x] in sunk_spaces:
-            reward = -10
+        # elif self.state[y][x] in hit_spaces or self.state[y][x] in sunk_spaces:
+        #     reward = -10
+        # else:
+        #     raise ValueError("Invalid state")
         else:
-            raise ValueError("Invalid state")
+            reward = -10
 
         return (self.hid_state, self.dead_ships), reward, self.done, {}
 
@@ -106,3 +113,6 @@ print(avg_list)
 # mean:  2.3938089833000005 std_dev:  0.015541127257026607
 
 # mean:  2.4946897120000466 std_dev:  0.004272984706538216
+# mean:  2.482905437600021 std_dev:  0.00925681537253497
+
+# mean:  1.9700759035000484 std_dev:  0.012570561470121295
