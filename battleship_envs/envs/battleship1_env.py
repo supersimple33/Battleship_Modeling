@@ -28,6 +28,7 @@ class Battleship1(gym.Env):
         # Action and observations spaces
 
     def _searchAndReplace(self, x, y, len_, search, replace, c):
+        # Hacky speed up
         self.state[y][x] = replace
         self.hidState[c][y][x] = replace
         self.hidState[0][y][x] = Space.Empty
@@ -80,56 +81,56 @@ class Battleship1(gym.Env):
         if self.done:
             # print("Game Over")
             return self.hidState, self.reward, self.done, self.expectedShots #check return
+
+        if targetSpace == Space.Empty:
+            self.state[y][x] = Space.Miss
+            self.hidState[0][y][x] = Space.Miss
+        elif targetSpace == Space.HiddenTwo:
+            self.reward = True
+            self.expectedShots[target] = Space.Empty
+            self.state[y][x] = Space.HitPTwo
+            self.hidState[0][y][x] = Space.HitPTwo
+            self.hitsOnShips[4] = self.hitsOnShips[4] + 1
+            if self.hitsOnShips[4] == 2:
+                self._searchAndReplace(x, y, self.hitsOnShips[4], Space.HitPTwo, Space.SunkTwo, 1)
+        elif targetSpace == Space.HiddenSub:
+            self.reward = True
+            self.expectedShots[target] = Space.Empty
+            self.state[y][x] = Space.HitPSub
+            self.hidState[0][y][x] = Space.HitPSub
+            self.hitsOnShips[3] = self.hitsOnShips[3] + 1
+            if self.hitsOnShips[3] == 3:
+                self._searchAndReplace(x, y, self.hitsOnShips[3], Space.HitPSub, Space.SunkSub, 1)
+        elif targetSpace == Space.HiddenCruiser:
+            self.reward = True
+            self.expectedShots[target] = Space.Empty
+            self.state[y][x] = Space.HitPCruiser
+            self.hidState[0][y][x] = Space.HitPCruiser
+            self.hitsOnShips[2] = self.hitsOnShips[2] + 1
+            if self.hitsOnShips[2] == 3:
+                self._searchAndReplace(x, y, self.hitsOnShips[2], Space.HitPCruiser, Space.SunkCruiser, 1)
+        elif targetSpace == Space.HiddenFour:
+            self.reward = True
+            self.expectedShots[target] = Space.Empty
+            self.state[y][x] = Space.HitPFour
+            self.hidState[0][y][x] = Space.HitPFour
+            self.hitsOnShips[1] = self.hitsOnShips[1] + 1
+            if self.hitsOnShips[1] == 4:
+                self._searchAndReplace(x, y, self.hitsOnShips[1], Space.HitPFour, Space.SunkFour, 1)
+        elif targetSpace == Space.HiddenFive:
+            self.reward = True
+            self.expectedShots[target] = Space.Empty
+            self.state[y][x] = Space.HitPFive
+            self.hidState[0][y][x] = Space.HitPFive
+            self.hitsOnShips[0] = self.hitsOnShips[0] + 1
+            if self.hitsOnShips[0] == 5:
+                self._searchAndReplace(x, y, self.hitsOnShips[0], Space.HitPFive, Space.SunkFive, 1)
         else:
-            if targetSpace == Space.Empty:
-                self.state[y][x] = Space.Miss
-                self.hidState[0][y][x] = Space.Miss
-            elif targetSpace == Space.HiddenTwo:
-                self.reward = True
-                self.expectedShots[target] = Space.Empty
-                self.state[y][x] = Space.HitPTwo
-                self.hidState[0][y][x] = Space.HitPTwo
-                self.hitsOnShips[4] = self.hitsOnShips[4] + 1
-                if self.hitsOnShips[4] == 2:
-                    self._searchAndReplace(x, y, self.hitsOnShips[4], Space.HitPTwo, Space.SunkTwo, 1)
-            elif targetSpace == Space.HiddenSub:
-                self.reward = True
-                self.expectedShots[target] = Space.Empty
-                self.state[y][x] = Space.HitPSub
-                self.hidState[0][y][x] = Space.HitPSub
-                self.hitsOnShips[3] = self.hitsOnShips[3] + 1
-                if self.hitsOnShips[3] == 3:
-                    self._searchAndReplace(x, y, self.hitsOnShips[3], Space.HitPSub, Space.SunkSub, 1)
-            elif targetSpace == Space.HiddenCruiser:
-                self.reward = True
-                self.expectedShots[target] = Space.Empty
-                self.state[y][x] = Space.HitPCruiser
-                self.hidState[0][y][x] = Space.HitPCruiser
-                self.hitsOnShips[2] = self.hitsOnShips[2] + 1
-                if self.hitsOnShips[2] == 3:
-                    self._searchAndReplace(x, y, self.hitsOnShips[2], Space.HitPCruiser, Space.SunkCruiser, 1)
-            elif targetSpace == Space.HiddenFour:
-                self.reward = True
-                self.expectedShots[target] = Space.Empty
-                self.state[y][x] = Space.HitPFour
-                self.hidState[0][y][x] = Space.HitPFour
-                self.hitsOnShips[1] = self.hitsOnShips[1] + 1
-                if self.hitsOnShips[1] == 4:
-                    self._searchAndReplace(x, y, self.hitsOnShips[1], Space.HitPFour, Space.SunkFour, 1)
-            elif targetSpace == Space.HiddenFive:
-                self.reward = True
-                self.expectedShots[target] = Space.Empty
-                self.state[y][x] = Space.HitPFive
-                self.hidState[0][y][x] = Space.HitPFive
-                self.hitsOnShips[0] = self.hitsOnShips[0] + 1
-                if self.hitsOnShips[0] == 5:
-                    self._searchAndReplace(x, y, self.hitsOnShips[0], Space.HitPFive, Space.SunkFive, 1)
-            else:
-                # print("Misfire")
-                self.done = True
-                self.reward = False
-                return [self.hidState, self.reward, self.done, self.expectedShots]
-            self.counter += 1
+            # print("Misfire")
+            self.done = True
+            self.reward = False
+            return [self.hidState, self.reward, self.done, self.expectedShots]
+        self.counter += 1
         win = self.hitsOnShips == [5,4,3,3,2]
         if win:
             self.done = True

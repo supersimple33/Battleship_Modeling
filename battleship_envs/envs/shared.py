@@ -7,7 +7,7 @@ import numpy as np
 
 class Space(Flag): # is this the best performance? Do we still need the numpy floats? intflag? bonus safety checks?
     """The labels for each of the spaces in the battleship game."""
-    Empty = 0
+    Empty = auto()
 
     Miss = auto()
 
@@ -126,3 +126,28 @@ def setup_ships(np_random: np.random.Generator): # need to make this very fast
             continue
         i += 1
     return state
+
+hittable_spaces = hidden_spaces | Space.Empty
+def is_hittable(slot):
+    """Check if a slot is hittable"""
+    return slot in hittable_spaces
+check_hittable = np.vectorize(is_hittable)
+
+def sink_two(slot):
+    """Check if a slot is a hit two and sink it"""
+    return Space.SunkTwo if slot == Space.HitPTwo else slot
+def sink_sub(slot):
+    """Check if a slot is a hit sub and sink it"""
+    return Space.SunkSub if slot == Space.HitPSub else slot
+def sink_cruiser(slot):
+    """Check if a slot is a hit cruiser and sink it"""
+    return Space.SunkCruiser if slot == Space.HitPCruiser else slot
+def sink_four(slot):
+    """Check if a slot is a hit four and sink it"""
+    return Space.SunkFour if slot == Space.HitPFour else slot
+def sink_five(slot):
+    """Check if a slot is a hit five and sink it"""
+    return Space.SunkFive if slot == Space.HitPFive else slot
+
+fast_sinks = [np.vectorize(sink_two), np.vectorize(sink_sub), np.vectorize(sink_cruiser), np.vectorize(sink_four), np.vectorize(sink_five)]
+# ^ not in fact that much faster if at all since sinking is sparse
