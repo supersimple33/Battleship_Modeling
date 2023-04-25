@@ -96,7 +96,9 @@ class Battleship3(gym.Env):
     def step(self, target): # 
         """Take a step in the game shooting at the specified target."""
         # super().step(target)
-        assert target in self.action_space
+
+        # VERIFICATIONS
+        # assert target in self.action_space
         # assert self._verify()
 
         if self.done:
@@ -191,18 +193,18 @@ class Battleship3(gym.Env):
         return True
 
 
-import timeit
-env = Battleship3()
-env.reset()
-env._verify()
-avg_list = []
-for i in range(0,20):
-    print(i)
-    # L = [timeit.timeit('env.reset()', globals=globals(), number = 10000)]
-    L = timeit.repeat(setup='env.reset(); i=0', stmt='env.step(i); i += 1', globals=globals(), number = 100, repeat = 5000)
-    avg_list.append(sum(L))
-print("mean: ", sum(avg_list)/len(avg_list), "std_dev: ", np.std(avg_list))
-print(avg_list)
+# import timeit
+# env = Battleship3()
+# env.reset()
+# env._verify()
+# avg_list = []
+# for i in range(0,20):
+#     print(i)
+#     # L = [timeit.timeit('env.reset()', globals=globals(), number = 10000)]
+#     L = timeit.repeat(setup='env.reset(); i=0', stmt='env.step(i); i += 1', globals=globals(), number = 100, repeat = 5000)
+#     avg_list.append(sum(L))
+# print("mean: ", sum(avg_list)/len(avg_list), "std_dev: ", np.std(avg_list))
+# print(avg_list)
 
 # Trial set 1
 # mean:  2.407954839600001 std_dev:  0.03430318664613518

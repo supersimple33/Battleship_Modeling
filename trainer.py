@@ -61,25 +61,25 @@ blankBoard = np.zeros((100,), np.float32)
 # Takes a move and executes it on the environment
 @tf.function() # Decoration is 10 fold faster, 
 def makeMove(obs,f):
-	preds = model(obs, training=False)
-	if f == 1:
-		return tf.argmax(preds, 1, output_type=tf.int32)[0]
-	else:
-		return tf.math.top_k(preds, k=f)[1][0][f-1]
+    preds = model(obs, training=False)
+    if f == 1:
+        return tf.argmax(preds, 1, output_type=tf.int32)[0]
+    else:
+        return tf.math.top_k(preds, k=f)[1][0][f-1]
 
 # Converts regular spaces to what would be seen in a game 
 def singleShipSight(e, match):
-	if '2' in match.description:
-		return 1 if '2' in e.description else 0
-	if 'S' in match.description:
-		return 1 if 'S' in e.description else 0
-	if 'C' in match.description:
-		return 1 if 'C' in e.description else 0
-	if '4' in match.description:
-		return 1 if '4' in e.description else 0
-	if '5' in match.description:
-		return 1 if '5' in e.description else 0
-	return 0
+    if '2' in match.description:
+        return 1 if '2' in e.description else 0
+    if 'S' in match.description:
+        return 1 if 'S' in e.description else 0
+    if 'C' in match.description:
+        return 1 if 'C' in e.description else 0
+    if '4' in match.description:
+        return 1 if '4' in e.description else 0
+    if '5' in match.description:
+        return 1 if '5' in e.description else 0
+    return 0
 
 # Recursion Variables and Stats
 lengthLimit = 98
@@ -95,137 +95,137 @@ seed = 0
 failed = 0
 
 if EPSILON >= 1.0: # Time Savers
-	fullyRandom = np.random.rand(NUM_GAMES,100).argsort(1)[:,:100]
+    fullyRandom = np.random.rand(NUM_GAMES,100).argsort(1)[:,:100]
 
 epoch = 0
 # Loop through for each epoch
 while epoch < NUM_GAMES:
-	if failed != 0:
-		prevObs, prevOut = env.reset(seed=seed)
-	else:
-		prevObs, prevOut = env.reset()
-		seed = env.seed
+    if failed != 0:
+        prevObs, prevOut = env.reset(seed=seed)
+    else:
+        prevObs, prevOut = env.reset()
+        seed = env.seed
 
-	# Get the first observation
-	prevObs = np.moveaxis(prevObs,0,-1) # CPU ONLY
-	prevObs = vfunc(prevObs) # redo timeit with numpy
-	prevObs = tf.convert_to_tensor([prevObs])
+    # Get the first observation
+    prevObs = np.moveaxis(prevObs,0,-1) # CPU ONLY
+    prevObs = vfunc(prevObs) # redo timeit with numpy
+    prevObs = tf.convert_to_tensor([prevObs])
 
-	# Set up variables for this epoch
-	done = False
-	slotsLeft = copy(possMoves)
-	prevReward = False
+    # Set up variables for this epoch
+    done = False
+    slotsLeft = copy(possMoves)
+    prevReward = False
 
-	gameObs = []
-	gameExp = []
+    gameObs = []
+    gameExp = []
 
-	# Loop through until game is over
-	while not done: # Could Accelerate this, however few tf methods, and a couple of outside methods
-		# Decide what move to make
-		if EPSILON >= 1.0:
-			move = fullyRandom[epoch, env.counter]
-		elif random() < EPSILON:
-			move = choice(slotsLeft)
-		else:
-			for f in range(TOLERANCE):
-				move = makeMove(prevObs,f+1).numpy() # Could convert f to tensor for speed up
-				if move in slotsLeft:
-					break
-		obs, reward, done, out = env.step(move)
-		obs = vfunc(obs)
+    # Loop through until game is over
+    while not done: # Could Accelerate this, however few tf methods, and a couple of outside methods
+        # Decide what move to make
+        if EPSILON >= 1.0:
+            move = fullyRandom[epoch, env.counter]
+        elif random() < EPSILON:
+            move = choice(slotsLeft)
+        else:
+            for f in range(TOLERANCE):
+                move = makeMove(prevObs,f+1).numpy() # Could convert f to tensor for speed up
+                if move in slotsLeft:
+                    break
+        obs, reward, done, out = env.step(move)
+        obs = vfunc(obs)
 
-		if reward:
-			hits += 1
+        if reward:
+            hits += 1
 
-		# prevOut = vfunc(prevOut) #out = vfunc(out) #prevobs non zero should never have one in corresponding expected # non zero pre obs should never be greater than one
-		# prevReward = reward
+        # prevOut = vfunc(prevOut) #out = vfunc(out) #prevobs non zero should never have one in corresponding expected # non zero pre obs should never be greater than one
+        # prevReward = reward
 
 # 		print(out[move]) #fullyRandom[epoch, abs(env.counter - 2)]
-		expect = np.zeros((100,), np.float32)
-		expect[move] = 1.0
-		gameObs.append(prevObs[0])
-		gameExp.append(expect)
-		if done: 
-			observations.extend(gameObs)
-			expecteds.extend(gameExp)
-			failed = 0
-		elif env.counter >= lengthLimit: # or equal
-			failed += 1
-			if failed > 100: # BUG: if we are failing more than 100 iterations something is wrong
-				failed = 0 # dont want to get stuck in a loop and waste time
-				print("SKIPPING SEED: " + str(seed) + " after failing " + str(failed) + " times")
-				# epoch += 1
-			elif failed == 20:
-				print("failed " + str(seed) + " for the " + str(failed) + " time this is epoch " + str(epoch)) # report failures
-			epoch -= 1
-			break
+        expect = np.zeros((100,), np.float32)
+        expect[move] = 1.0
+        gameObs.append(prevObs[0])
+        gameExp.append(expect)
+        if done: 
+            observations.extend(gameObs)
+            expecteds.extend(gameExp)
+            failed = 0
+        elif env.counter >= lengthLimit: # or equal
+            failed += 1
+            if failed > 100: # BUG: if we are failing more than 100 iterations something is wrong
+                failed = 0 # dont want to get stuck in a loop and waste time
+                print("SKIPPING SEED: " + str(seed) + " after failing " + str(failed) + " times")
+                # epoch += 1
+            elif failed == 20:
+                print("failed " + str(seed) + " for the " + str(failed) + " time this is epoch " + str(epoch)) # report failures
+            epoch -= 1
+            break
 
 # 		zer = tf.math.count_nonzero(prevObs, axis=1, keepdims=True, dtype=tf.float32)
 # 		sums = tf.add_n([tf.reshape(zer, [100]), tf.convert_to_tensor(prevOut)]) #tf.reshape(expBatch, [32,1,10,10])
 # 		if 2 in sums.numpy():
 # 			raise
 
-		# prevOut = np.copy(out)
-		iterations += 1
-		if done:
-			gameLength.update_state(env.counter)
-		else:
-			obs = np.moveaxis(obs,0,-1) # CPU ONLY
-			prevObs = tf.convert_to_tensor([obs])
-			slotsLeft.remove(move)
+        # prevOut = np.copy(out)
+        iterations += 1
+        if done:
+            gameLength.update_state(env.counter)
+        else:
+            obs = np.moveaxis(obs,0,-1) # CPU ONLY
+            prevObs = tf.convert_to_tensor([obs])
+            slotsLeft.remove(move)
 
-	# TRAINING THE MODEL
-	if len(observations) > 1024 and failed == 0: # only print once we have succeeded
-		batch_size = 32
+    # TRAINING THE MODEL
+    if len(observations) > 1024 and failed == 0: # only print once we have succeeded
+        batch_size = 32
 
-		pairing = list(zip(observations, expecteds))
-		shuffle(pairing)
-		observations, expecteds = list(zip(*pairing))
+        pairing = list(zip(observations, expecteds))
+        shuffle(pairing)
+        observations, expecteds = list(zip(*pairing))
 
-		observations = [observations[i:i + batch_size] for i in range(0, len(observations), batch_size)]
-		expecteds = [expecteds[i:i + batch_size] for i in range(0, len(expecteds), batch_size)]
-		for b in range(len(observations)):
-			obsBatch = tf.stack(observations[b])
-			expBatch = tf.stack(expecteds[b])
+        observations = [observations[i:i + batch_size] for i in range(0, len(observations), batch_size)]
+        expecteds = [expecteds[i:i + batch_size] for i in range(0, len(expecteds), batch_size)]
+        for b in range(len(observations)):
+            obsBatch = tf.stack(observations[b])
+            expBatch = tf.stack(expecteds[b])
 
-			ret = model.train_on_batch(x=obsBatch,y=expBatch,reset_metrics=False, return_dict=True)
-			lossAvg.update_state(ret['loss'])
-			accuracy.update_state(ret['customAccuracy'])
+            ret = model.train_on_batch(x=obsBatch,y=expBatch,reset_metrics=False, return_dict=True)
+            lossAvg.update_state(ret['loss'])
+            accuracy.update_state(ret['customAccuracy'])
 
-		observations = []
-		expecteds = []
+        observations = []
+        expecteds = []
 
-	# Ocassionally update stats and save the model
-	if (epoch+1) % (NUM_GAMES // 30) == 0:
-		# with summary_writer.as_default():
-			# tf.summary.scalar('Loss', lossAvg.result(), step=epoch+1)
-			# tf.summary.scalar('Error', error.result(), step=epoch+1)
-			# tf.summary.scalar('Accuracy', accuracy.result()*100, step=epoch+1)
-			# tf.summary.scalar('Hits', 100*hits / iterations, step=epoch+1)
-			# tf.summary.scalar('Game Length', gameLength.result(), step=epoch+1)
-		iterations = 1
-		print(f"Completed {epoch+1} epochs at {round(EPSILON,7)} in {round(time.time() - ct, 3)}s. L={round(float(lossAvg.result().numpy()),6)} E={round(float(error.result().numpy()),6)} A={round(float(accuracy.result().numpy()),6)} H={round(hits / iterations,6)} I={round(float(gameLength.result().numpy()),3)}")
-		
-		# BUG: We need to finish atleast 1 game before changing the length limit
-		lengthLimit = int(round(float(gameLength.result().numpy()),0)) - 1 #new game target length
-		
-		error.reset_states()
-		accuracy.reset_states()
-		# gameLength.reset_states() # roll the avg
-		lossAvg.reset_states()
-		hits = 0
-		iterations = 0
-		# if EPSILON > 0.06:
-		# 	EPSILON -= 0.02
-		# else:
-			# EPSILON /= 1.75
+    # Ocassionally update stats and save the model
+    if (epoch+1) % (NUM_GAMES // 30) == 0:
+        # with summary_writer.as_default():
+            # tf.summary.scalar('Loss', lossAvg.result(), step=epoch+1)
+            # tf.summary.scalar('Error', error.result(), step=epoch+1)
+            # tf.summary.scalar('Accuracy', accuracy.result()*100, step=epoch+1)
+            # tf.summary.scalar('Hits', 100*hits / iterations, step=epoch+1)
+            # tf.summary.scalar('Game Length', gameLength.result(), step=epoch+1)
+        iterations = 1
+        print(f"Completed {epoch+1} epochs at {round(EPSILON,7)} in {round(time.time() - ct, 3)}s. L={round(float(lossAvg.result().numpy()),6)} E={round(float(error.result().numpy()),6)} A={round(float(accuracy.result().numpy()),6)} H={round(hits / iterations,6)} I={round(float(gameLength.result().numpy()),3)}")
+        
+        # BUG: We need to finish atleast 1 game before changing the length limit
+        lengthLimit = int(round(float(gameLength.result().numpy()),0)) - 1 #new game target length
+        
+        error.reset_states()
+        accuracy.reset_states()
+        # gameLength.reset_states() # roll the avg
+        lossAvg.reset_states()
+        hits = 0
+        iterations = 0
+        # if EPSILON > 0.06:
+        # 	EPSILON -= 0.02
+        # else:
+            # EPSILON /= 1.75
 
-		if lossAvg.result() != 0.0:
-			model.save_weights('saved_model/checkpoints/cp')
-		ct = time.time()
-	
-	# Next Iteration
-	epoch += 1
+        if lossAvg.result() != 0.0:
+            model.save_weights('saved_model/checkpoints/cp')
+        ct = time.time()
+    
+    # Next Iteration
+    epoch += 1
 
 # Finally save
 model.save('saved_model/foresithe.h5')

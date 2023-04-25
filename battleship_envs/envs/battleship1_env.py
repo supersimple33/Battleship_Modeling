@@ -173,19 +173,19 @@ class Battleship1(gym.Env):
 
 # 454 µs ± 20.4 µs per loop (mean ± std. dev. of 20 runs, 1000 loops each)
 
-import timeit
-env = Battleship1()
-for i in range(100):
-    env.step(i)
+# import timeit
+# env = Battleship1()
+# for i in range(100):
+#     env.step(i)
 
-avg_list = []
-for i in range(0,20):
-    print(i)
-    # L = [timeit.timeit('env.reset()', globals=globals(), number = 10000)]
-    L = timeit.repeat(setup='env.reset(); i=0', stmt='env.step(i); i += 1', globals=globals(), number = 100, repeat = 5000) #2.73
-    avg_list.append(sum(L))
-print("mean: ", sum(avg_list)/len(avg_list), "std_dev: ", np.std(avg_list))
-print(avg_list)
+# avg_list = []
+# for i in range(0,20):
+#     print(i)
+#     # L = [timeit.timeit('env.reset()', globals=globals(), number = 10000)]
+#     L = timeit.repeat(setup='env.reset(); i=0', stmt='env.step(i); i += 1', globals=globals(), number = 100, repeat = 5000) #2.73
+#     avg_list.append(sum(L))
+# print("mean: ", sum(avg_list)/len(avg_list), "std_dev: ", np.std(avg_list))
+# print(avg_list)
 
 # mean:  2.6814786437500002 std_dev:  0.028973936597862637
 # mean:  2.6619473125999997 std_dev:  0.019689577780807894
