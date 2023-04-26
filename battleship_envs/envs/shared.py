@@ -2,9 +2,8 @@ from enum import Flag, unique, IntEnum, auto
 import numpy as np
 
 # indList = ("|-|","!M!","(2)","(S)","(C)","(4)","(5)",3"x2x","xSx","xCx","x4x","x5x","|2|","|S|","|C|","|4|","|5|","HiddenCruiser")
+
 @unique
-
-
 class Space(Flag): # is this the best performance? Do we still need the numpy floats? intflag? bonus safety checks?
     """The labels for each of the spaces in the battleship game."""
     Empty = auto()
@@ -51,7 +50,7 @@ class Space(Flag): # is this the best performance? Do we still need the numpy fl
 
     def description(self):
         return self._ignore_[self][0]
-    
+
     def old_value(self):
         return self._ignore_[self][1]
 

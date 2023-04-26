@@ -3,7 +3,7 @@ from gym import error, spaces, utils
 
 import numpy as np
 
-from shared import Space, setup_ships
+from battleship_envs.envs.shared import Space, setup_ships
 
 #game code
 class Battleship1(gym.Env):
@@ -21,6 +21,11 @@ class Battleship1(gym.Env):
             spaces.MultiDiscrete([3, 3, 3, 3, 3, 3, 3, 3, 3, 3]) for _ in range(10)
         ])
         self.observation_space = spaces.Tuple((missesChannel,regChannel,regChannel,regChannel,regChannel,regChannel))
+
+        super_obs_space = ([[[2] * 10] * 10])
+        super_obs_space.extend([[[3] * 10] * 10] * 5)
+        # self.observation_space = spaces.MultiDiscrete(super_obs_space)
+        
         self.hidState = np.full(shape=(2,10,10),fill_value=Space.Empty)
 
         self.reset()

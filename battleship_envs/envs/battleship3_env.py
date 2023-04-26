@@ -6,7 +6,7 @@ import pygame
 import gymnasium as gym
 from gymnasium import spaces
 
-from shared import Space, setup_ships, hidden_spaces, hit_spaces, sunk_spaces, check_hittable, fast_sinks
+from battleship_envs.envs.shared import Space, setup_ships, hidden_spaces, hit_spaces, sunk_spaces, check_hittable, fast_sinks
 
 # CAPS
 HIT_SWAPS = {Space.HiddenFive: Space.HitPFive, Space.HiddenFour: Space.HitPFour, Space.HiddenCruiser: Space.HitPCruiser, Space.HiddenSub: Space.HitPSub, Space.HiddenTwo: Space.HitPTwo}
@@ -25,7 +25,7 @@ class Battleship3(gym.Env):
         # Space number to hit
         self.action_space = spaces.Discrete(100)
         # One hot encodes of misses, hits, and then binaries of sunk ships
-        self.observation_space = spaces.Tuple((spaces.MultiBinary([10, 10, 2]), spaces.MultiBinary([5])))
+        self.observation_space = spaces.Tuple((spaces.MultiBinary([2, 10, 10]), spaces.MultiBinary([5])))
 
         self.state = None
         self.hid_state = None
@@ -36,12 +36,14 @@ class Battleship3(gym.Env):
         super().reset(seed=seed)
 
         self.state = setup_ships(self.np_random)
-        self.hid_state = np.full(shape=(2,10,10), fill_value=False)
+        self.hid_state = np.full(shape=(2,10,10), fill_value=False, dtype=np.bool_)
         self.dead_ships = np.zeros(5, dtype=np.bool_)
         self.hits_on_ships = [0, 0, 0, 0, 0] # TODO: should we extract out dead_ships?
         
         self.counter = 0
         self.done = False
+
+        # assert (self.hid_state, self.dead_ships) in self.observation_space
 
         return (self.hid_state, self.dead_ships), {}
 
@@ -107,7 +109,7 @@ class Battleship3(gym.Env):
 
         self.counter += 1
         # self.done = self.counter >= 100 # do we want to turn off the game after 100 moves?
-        reward = 0
+        reward = 0#-10
 
         x = target % 10
         y = target // 10
@@ -116,14 +118,13 @@ class Battleship3(gym.Env):
         if self.state[y][x] == Space.Empty:
             self.state[y][x] = Space.Miss
             self.hid_state[0][y][x] = True
-            reward = -1
         # Did we hit a ship?
         elif self.state[y][x] in hidden_spaces:
             slot = self.state[y][x]
 
             self.state[y][x] = HIT_SWAPS[slot]
             self.hid_state[1][y][x] = True
-            reward = 1
+            # reward += 20
 
             ship_num = HIT_ORDERING.index(slot)
             self.hits_on_ships[ship_num] += 1
@@ -141,12 +142,16 @@ class Battleship3(gym.Env):
                     # print("Game Over")
                     self.done = True
         # Did we hit a ship we already sunk? uhoh
-        # elif self.state[y][x] in hit_spaces or self.state[y][x] in sunk_spaces:
-        #     reward = -10
-        # else:
-        #     raise ValueError("Invalid state")
+        elif self.state[y][x] in (hit_spaces | sunk_spaces | Space.Miss):
+            reward = -100
         else:
-            reward = -10
+            raise ValueError("Invalid state")
+        # assumption no bad values
+        # else:
+        #     reward = -1000
+
+
+        # assert (self.hid_state, self.dead_ships) in self.observation_space
 
         return (self.hid_state, self.dead_ships), reward, self.done, {}
     
@@ -190,6 +195,9 @@ class Battleship3(gym.Env):
             if not np.any(check_hittable(self.state)):
                 print("Game is not over but there are no spaces left!")
                 return False
+        if np.any(np.logical_and(self.hid_state[0], self.hid_state[1])):
+            print("Hidden state has a space that is both hit and missed!")
+            return False
         return True
 
 

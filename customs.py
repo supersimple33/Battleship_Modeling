@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tensorflow.keras.layers import InputLayer, Flatten, Dense, Reshape, GlobalMaxPool1D, Reshape, LocallyConnected2D, Add, Activation, Conv2D, BatchNormalization, LeakyReLU, MaxPool2D, AveragePooling2D, Concatenate, Lambda, LayerNormalization, SeparableConv2D
+from tensorflow.keras.layers import Flatten, Dense, GlobalMaxPool1D, LocallyConnected2D, Conv2D, AveragePooling2D, Concatenate, Lambda, Multiply
 import tensorflow.keras.backend as K
 
 from tensorflow.python.ops import array_ops
@@ -134,3 +134,41 @@ def buildModel():
 
     out = Flatten()(fc) #fc
     return tf.keras.Model(inputs=inputLay, outputs=out)
+
+def buildModel2() -> tf.keras.Model:
+    # Pre Params
+    num_filters = 8
+    activation = 'relu' # selu
+    reg1 = tf.keras.regularizers.L1L2(0.0000,0.0000)
+    reg2 = tf.keras.regularizers.L1L2(0.0000,0.0000)
+
+    # Inputs
+    input_spaces = tf.keras.Input(shape=(2,10,10) if AXIS == 1 else (10,10,2))
+    input_sunks = tf.keras.Input(shape=(5,))
+
+    # Convolutional Layers
+    c1 = Lambda(lambda x: tf.math.reduce_max(x, axis=AXIS, keepdims=True))(input_spaces)
+    c3 = Conv2D(filters=num_filters // 2, kernel_size=3, activation=activation, padding='same', kernel_regularizer=reg1)(input_spaces)
+    c5 = Conv2D(filters=num_filters // 2, kernel_size=5, activation=activation, padding='same', kernel_regularizer=reg1)(input_spaces)
+    c55 = Conv2D(filters=num_filters // 4, kernel_size=5, activation=activation, padding='same',kernel_regularizer=reg1)(input_spaces)
+    pool = AveragePooling2D(pool_size=(3,3), padding='same')(c55)
+    # c75 = Conv2D(filters=num_filters // 2, kernel_size=5, activation=activation, padding='same', dilation_rate=5, kernel_regularizer=reg)(input_spaces)
+
+    # Sunks Connection
+    concatenate = Concatenate(axis=AXIS)([c1,c5])#([c1,c3,c5,c7,pool])
+
+    total_filters = concatenate.shape[AXIS]
+    sunks_expand = Dense(total_filters, activation='sigmoid')(input_sunks) # hard_sigmoid
+
+    combination = Multiply()([concatenate, sunks_expand])
+
+    # Fully Connected Layers
+    fc = LocallyConnected2D(1,19, activation='linear', padding='same', use_bias=True, implementation=2, kernel_regularizer=reg2)(combination) # no slower than regular 3 sigmoid
+
+    out = Flatten()(fc) #fc
+
+    return tf.keras.Model(inputs=[input_spaces, input_sunks], outputs=out)
+
+model = buildModel2()
+print(model.summary())
+# model.save('model.h5')
