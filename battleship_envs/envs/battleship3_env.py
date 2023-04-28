@@ -25,7 +25,10 @@ class Battleship3(gym.Env):
         # Space number to hit
         self.action_space = spaces.Discrete(100)
         # One hot encodes of misses, hits, and then binaries of sunk ships
-        self.observation_space = spaces.Tuple((spaces.MultiBinary([2, 10, 10]), spaces.MultiBinary([5])))
+        hits_one_hot = spaces.MultiBinary([2, 10, 10])
+        sunks = spaces.MultiBinary([5])
+        # self.observation_space = spaces.Tuple((hits_one_hot, sunks))
+        self.observation_space = hits_one_hot
 
         self.state = None
         self.hid_state = None
@@ -39,13 +42,13 @@ class Battleship3(gym.Env):
         self.hid_state = np.full(shape=(2,10,10), fill_value=False, dtype=np.bool_)
         self.dead_ships = np.zeros(5, dtype=np.bool_)
         self.hits_on_ships = [0, 0, 0, 0, 0] # TODO: should we extract out dead_ships?
-        
+
         self.counter = 0
         self.done = False
 
         # assert (self.hid_state, self.dead_ships) in self.observation_space
 
-        return (self.hid_state, self.dead_ships), {}
+        return self.hid_state, {} # (self.hid_state, self.dead_ships)
 
     def _search_and_replace(self, x: int, y: int, ship_len: int, search: Space, replace: Space):
         """Search for a certain space and replace it with another."""
@@ -118,13 +121,14 @@ class Battleship3(gym.Env):
         if self.state[y][x] == Space.Empty:
             self.state[y][x] = Space.Miss
             self.hid_state[0][y][x] = True
+            reward = -1
         # Did we hit a ship?
         elif self.state[y][x] in hidden_spaces:
             slot = self.state[y][x]
 
             self.state[y][x] = HIT_SWAPS[slot]
             self.hid_state[1][y][x] = True
-            # reward += 20
+            reward = 1
 
             ship_num = HIT_ORDERING.index(slot)
             self.hits_on_ships[ship_num] += 1
@@ -143,7 +147,7 @@ class Battleship3(gym.Env):
                     self.done = True
         # Did we hit a ship we already sunk? uhoh
         elif self.state[y][x] in (hit_spaces | sunk_spaces | Space.Miss):
-            reward = -100
+            reward = -10
         else:
             raise ValueError("Invalid state")
         # assumption no bad values
@@ -153,7 +157,7 @@ class Battleship3(gym.Env):
 
         # assert (self.hid_state, self.dead_ships) in self.observation_space
 
-        return (self.hid_state, self.dead_ships), reward, self.done, {}
+        return self.hid_state, reward, self.done, {} # (self.hid_state, self.dead_ships)
     
     def _verify(self) -> bool:
         """Runs some light verifications that the current state is one that actually makes sense."""

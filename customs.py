@@ -160,15 +160,17 @@ def buildModel2() -> tf.keras.Model:
     total_filters = concatenate.shape[AXIS]
     sunks_expand = Dense(total_filters, activation='sigmoid')(input_sunks) # hard_sigmoid
 
-    combination = Multiply()([concatenate, sunks_expand])
+    # combination = Multiply()([concatenate, sunks_expand])
+    combination = concatenate
 
     # Fully Connected Layers
     fc = LocallyConnected2D(1,19, activation='linear', padding='same', use_bias=True, implementation=2, kernel_regularizer=reg2)(combination) # no slower than regular 3 sigmoid
 
     out = Flatten()(fc) #fc
 
-    return tf.keras.Model(inputs=[input_spaces, input_sunks], outputs=out)
+    # return tf.keras.Model(inputs=[input_spaces, input_sunks], outputs=out)
+    return tf.keras.Model(inputs=input_spaces, outputs=out)
 
-model = buildModel2()
-print(model.summary())
+# model = buildModel2()
+# print(model.summary())
 # model.save('model.h5')
